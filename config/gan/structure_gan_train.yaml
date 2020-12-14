@@ -1,0 +1,21 @@
+name: test_medfe
+arch:
+  type: medfe
+  netG:
+    type: UnetGenerator
+    input_nc: 3
+    output_nc: 3
+    ngf: 64
+    norm: batch
+    no_dropout: true
+    init_type: normal
+    init_gain: 0.2
+  netD:
+    type: NLayerDiscriminator
+    input_nc: 3
+    ndf: 64
+    n_layers_D: 3
+    use_sigmoid: False
+    init_type: normal
+    init_gain: 0.2
+

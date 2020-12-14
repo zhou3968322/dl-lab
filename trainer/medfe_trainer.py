@@ -3,7 +3,7 @@
 # create: 2020/12/14
 
 
-class CrnnTrainer(object):
+class MedfeTrainer(object):
 
     def __init__(self, config):
         pass
