@@ -13,6 +13,11 @@ stream_handler.setFormatter(log_formatter)
 stream_handler.setLevel(logging.INFO)
 logger.addHandler(stream_handler)
 
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s\t%(levelname)s\t%(name)s '
+                           '%(filename)s:%(lineno)s - %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S')
+
 
 def set_log_file(log_path):
     if os.path.isfile(log_path):
@@ -22,3 +27,8 @@ def set_log_file(log_path):
     r_handler.setFormatter(log_formatter)
     r_handler.setLevel(logging.INFO)
     logger.addHandler(r_handler)
+    logging.basicConfig(level=logging.INFO,
+                        handlers=[r_handler],
+                        format='%(asctime)s\t%(levelname)s\t%(name)s%(filename)s:%(lineno)s - %(message)s',
+                        datefmt='%Y-%m-%d %H:%M:%S')
+
