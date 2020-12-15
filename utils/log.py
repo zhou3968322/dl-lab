@@ -6,12 +6,8 @@ import logging, os
 
 logger = logging.getLogger("root")
 
-stream_handler = logging.StreamHandler()
 log_formatter = logging.Formatter(fmt='%(asctime)s\t%(levelname)s\t%(name)s '
                                       '%(filename)s:%(lineno)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-stream_handler.setFormatter(log_formatter)
-stream_handler.setLevel(logging.INFO)
-logger.addHandler(stream_handler)
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s\t%(levelname)s\t%(name)s '
@@ -27,8 +23,5 @@ def set_log_file(log_path):
     r_handler.setFormatter(log_formatter)
     r_handler.setLevel(logging.INFO)
     logger.addHandler(r_handler)
-    logging.basicConfig(level=logging.INFO,
-                        handlers=[r_handler],
-                        format='%(asctime)s\t%(levelname)s\t%(name)s%(filename)s:%(lineno)s - %(message)s',
-                        datefmt='%Y-%m-%d %H:%M:%S')
+
 

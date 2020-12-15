@@ -45,7 +45,7 @@ def init_net(net, init_type='normal', init_gain=0.02, gpu_ids=[]):
 def get_scheduler(optimizer, lr_policy="lambda", niter=20, start_epoch=1, niter_decay=100, lr_decay_iters=50):
     if lr_policy == 'lambda':
         def lambda_rule(epoch):
-            lr_l = 1.0 - max(0, epoch + 1 + epoch_count - niter) / float(niter_decay + 1)
+            lr_l = 1.0 - max(0, epoch + 1 + start_epoch - niter) / float(niter_decay + 1)
             return lr_l
 
         scheduler = lr_scheduler.LamdaLR(optimizer, lr_lambda=lambda_rule)
