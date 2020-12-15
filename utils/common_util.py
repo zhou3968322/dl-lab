@@ -9,3 +9,6 @@ def get_model_name(name):
 
 def get_trainer_name(name):
     return "{}{}Trainer".format(name[0].upper(), name[1:])
+
+
+

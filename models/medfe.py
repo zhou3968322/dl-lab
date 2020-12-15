@@ -5,7 +5,7 @@ import networks
 import torch
 from utils.dl_util import init_net
 from loss.gan_loss import VGG16, PerceptualLoss, StyleLoss, GANLoss
-from utils.dl_util import get_scheduler, get_optimizer
+from utils.dl_util import get_scheduler, get_optimizer, set_requires_grad
 from models.base_model import BaseModel
 
 
@@ -45,13 +45,14 @@ class Medfe(BaseModel):
 
         if self.mode == "train":
             self.vgg = VGG16()
+            loss_args = config.pop("loss")
             self.perceptual_loss = PerceptualLoss(vgg_module=self.vgg)
-            self.lambdaP = config["loss"].pop("lambdaP")
+            self.lambdaP = loss_args.pop("lambdaP")
             self.style_loss = StyleLoss(vgg_module=self.vgg)
-            self.lambdaS = config["loss"].pop("lambdaS")
+            self.lambdaS = loss_args.pop("lambdaS")
             self.l1_loss = torch.nn.L1Loss()
-            self.lambdaL1 = config["loss"].pop("lambdaL1")
-            self.gan_loss = config["loss"].pop("lambdaGan")
+            self.lambdaL1 = loss_args.pop("lambdaL1")
+            self.gan_loss = loss_args.pop("lambdaGan")
 
         if self.mode == "train":
             optimizer_args = config["trainer"].pop("optimizer")
@@ -73,3 +74,15 @@ class Medfe(BaseModel):
             self.load_networks(load_epoch)
         self.print_networks()
 
+    def train(self, data):
+        current_data = data
+
+    def backward(self):
+        set_requires_grad(self.discriminator_gt, True)
+        set_requires_grad(self.encoder, False)
+        set_requires_grad(self.decoder, False)
+        set_requires_grad(self.pc_block, False)
+        self.optimizer_discriminator_gt.zero_grad()
+
+    def backward_discriminator(self):
+        pass

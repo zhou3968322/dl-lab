@@ -75,4 +75,15 @@ tensorboard:
   display_freq: 100
   print_freq: 100
 
-
+datasets:
+  train:
+    dataset:
+      type: AlignedMaskDataset
+      args:
+        data_root: /data_ssd/ocr/zhoubingcheng/gan_datasets/gan_aligned_crop_data_with_mask_small/
+    loader:
+      batch_size: 1
+      shuffle: true
+      pin_memory: true
+      num_workers: 0
+      collate_fn: ''

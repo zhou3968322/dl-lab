@@ -41,27 +41,24 @@ def _handler_mask_data(mask_data, crop_size=65):
     return np.array(crop_box)
 
 
-class AlignedDataset(Dataset):
+class AlignedMaskDataset(Dataset):
     """A dataset class for noise, gt, mask image dataset.
 
     It assumes that the directory '/path/to/data/train' contains image pairs in the form of {A,B, C}.
     During test time, you need to prepare a directory '/path/to/data/test'.
     """
 
-    def __init__(self, opt):
+    def __init__(self, data_root, phase="train"):
         """Initialize this dataset class.
 
         Parameters:
             opt (Option class) -- stores all the experiment flags; needs to be a subclass of BaseOptions
         """
-        super(AlignedDataset, self).__init__()
-        self.dir_AB = os.path.join(opt.dataroot, opt.phase)  # get the image directory
-        mask_dir = os.path.join(opt.dataroot, "mask")
+        super(AlignedMaskDataset, self).__init__()
+        self.dir_AB = os.path.join(data_root, phase)  # get the image directory
+        mask_dir = os.path.join(data_root, "mask")
         self.AB_paths = sorted(make_dataset(self.dir_AB, opt.max_dataset_size))  # get image paths
         self.dataset_len = len(self.AB_paths)
-        assert(self.opt.load_size >= self.opt.crop_size)   # crop_size should be smaller than the size of loaded image
-        self.input_nc = self.opt.output_nc
-        self.output_nc = self.opt.input_nc
         mask_paths = []
         for ab_path in self.AB_paths:
             ab_name = os.path.basename(ab_path)
