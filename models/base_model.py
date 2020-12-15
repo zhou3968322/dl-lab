@@ -18,15 +18,6 @@ class BaseModel(object):
             self.save_dir = config["trainer"].pop("save_dir")
             self.continue_train = config["trainer"].pop("continue_train")
 
-
-    @abc.abstractmethod
-    def print_networks(self):
-        pass
-
-    @abc.abstractmethod
-    def save_networks(self):
-        pass
-
     def load_networks(self, which_epoch):
         for name in self.model_names:
             if isinstance(name, str):
