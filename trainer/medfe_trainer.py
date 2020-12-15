@@ -10,7 +10,7 @@ class MedfeTrainer(object):
     def __init__(self, config):
         self.experiment_name = config.pop('name')
         model_name = get_model_name(config["arch"].pop("type"))
-        model = getattr(models, model_name)(config["arch"])
+        model = getattr(models, model_name)(config)
 
     def train(self):
         pass

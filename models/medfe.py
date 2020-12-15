@@ -9,36 +9,36 @@ from utils.dl_util import get_scheduler, get_optimizer
 from models.base_model import BaseModel
 
 
-
 class Medfe(BaseModel):
 
     def __init__(self, config):
         super(Medfe, self).__init__(config)
-        encoder_init_args = config["encoder"].pop("init_args")
+        arch_config = config.pop('arch')
+        encoder_init_args = arch_config["encoder"].pop("init_args")
         model_names = []
-        self.encoder = getattr(getattr(networks, config["encoder"].pop("type")),
-                               config["encoder"].pop("name"))(**config["encoder"])
+        self.encoder = getattr(getattr(networks, arch_config["encoder"].pop("type")),
+                               arch_config["encoder"].pop("name"))(**arch_config["encoder"])
         self.encoder = init_net(self.encoder, **encoder_init_args)
         model_names.append("encoder")
-        decoder_init_args = config["decoder"].pop("init_args")
-        self.decoder = getattr(getattr(networks, config["decoder"].pop("type")),
-                               config["decoder"].pop("name"))(**config["decoder"])
+        decoder_init_args = arch_config["decoder"].pop("init_args")
+        self.decoder = getattr(getattr(networks, arch_config["decoder"].pop("type")),
+                               arch_config["decoder"].pop("name"))(**arch_config["decoder"])
         self.decoder = init_net(self.decoder, **decoder_init_args)
         model_names.append("decoder")
-        pc_block_init_args = config["pc_block"].pop("init_args")
-        self.pc_block = getattr(getattr(networks, config["pc_block"].pop("type")),
-                                config["pc_block"].pop("name"))(**config["pc_block"])
+        pc_block_init_args = arch_config["pc_block"].pop("init_args")
+        self.pc_block = getattr(getattr(networks, arch_config["pc_block"].pop("type")),
+                                arch_config["pc_block"].pop("name"))(**arch_config["pc_block"])
         self.pc_block = init_net(self.pc_block, **pc_block_init_args)
         model_names.append("pc_block")
-        if config["mode"] == "train":
-            discriminator_gt_args = config["discriminator_gt"].pop("init_args")
-            self.discriminator_gt = getattr(getattr(networks, config["discriminator_gt"].pop("type")),
-                                            config["discriminator_gt"].pop("name"))(**config["discriminator_gt"])
+        if self.mode == "train":
+            discriminator_gt_args = arch_config["discriminator_gt"].pop("init_args")
+            self.discriminator_gt = getattr(getattr(networks, arch_config["discriminator_gt"].pop("type")),
+                                            arch_config["discriminator_gt"].pop("name"))(**arch_config["discriminator_gt"])
             self.discriminator_gt = init_net(self.discriminator_gt, **discriminator_gt_args)
             model_names.append("discriminator_gt")
-            discriminator_mask_args = config["discriminator_mask"].pop("init_args")
-            self.discriminator_mask = getattr(getattr(networks, config["discriminator_mask"].pop("type")),
-                                              config["discriminator_mask"].pop("name"))(**config["discriminator_mask"])
+            discriminator_mask_args = arch_config["discriminator_mask"].pop("init_args")
+            self.discriminator_mask = getattr(getattr(networks, arch_config["discriminator_mask"].pop("type")),
+                                              arch_config["discriminator_mask"].pop("name"))(**arch_config["discriminator_mask"])
             self.discriminator_mask = init_net(self.discriminator_mask, **discriminator_mask_args)
 
         self.model_names = model_names
