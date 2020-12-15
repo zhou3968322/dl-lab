@@ -14,14 +14,14 @@ class BaseModel(object):
         self.mode = config.pop("mode")
         self.continue_train = False
         self.device = torch.device('cuda') if torch.cuda.device_count() >= 1 else torch.device('cpu')
-        if config["mode"] == "train":
+        if self.mode == "train":
             self.save_dir = config["trainer"].pop("save_dir")
             self.continue_train = config["trainer"].pop("continue_train")
 
     def load_networks(self, which_epoch):
         for name in self.model_names:
             if isinstance(name, str):
-                load_filename = '{}_net_epoch_{}.pth' % (name, which_epoch)
+                load_filename = '{}_net_epoch_{}.pth'.format(name, which_epoch)
                 load_path = os.path.join(self.save_dir, load_filename)
 
                 net = getattr(self, 'net' + name)
@@ -37,7 +37,7 @@ class BaseModel(object):
     def save_networks(self, which_epoch):
         for name in self.model_names:
             if isinstance(name, str):
-                save_filename = '{}_net_epoch_{}.pth' % (name, which_epoch)
+                save_filename = '{}_net_epoch_{}.pth'.format(name, which_epoch)
                 save_path = os.path.join(self.save_dir, save_filename).replace('\\', '/')
                 net = getattr(self, name)
                 optimize = getattr(self, 'optimizer_' + name)
