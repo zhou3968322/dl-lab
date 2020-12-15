@@ -4,6 +4,7 @@
 import torch
 from torch.nn import init
 import torch.optim as optim
+from torch.optim import lr_scheduler
 from utils.log import logger
 
 
@@ -47,13 +48,13 @@ def get_scheduler(optimizer, lr_policy="lambda", niter=20, start_epoch=1, niter_
             lr_l = 1.0 - max(0, epoch + 1 + epoch_count - niter) / float(niter_decay + 1)
             return lr_l
 
-        scheduler = optim.lr_scheduler.LamdaLR(optimizer, lr_lambda=lambda_rule)
+        scheduler = lr_scheduler.LamdaLR(optimizer, lr_lambda=lambda_rule)
     elif lr_policy == 'step':
-        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=lr_decay_iters, gamma=0.1)
+        scheduler = lr_scheduler.StepLR(optimizer, step_size=lr_decay_iters, gamma=0.1)
     elif lr_policy == 'plateau':
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.2, threshold=0.01, patience=5)
+        scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.2, threshold=0.01, patience=5)
     elif lr_policy == 'cosine':
-        scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=niter, eta_min=0)
+        scheduler = lr_scheduler.CosineAnnealingLR(optimizer, T_max=niter, eta_min=0)
     else:
         return NotImplementedError('learning rate policy [%s] is not implemented', lr_policy)
     return scheduler
