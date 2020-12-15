@@ -10,19 +10,23 @@
 import argparse
 import os
 import anyconfig
+import trainer
+from utils.common_util import get_trainer_name
 
 
 def init_args():
     parser = argparse.ArgumentParser(description='DBNet.pytorch')
-    parser.add_argument('--config_file', default='config/gan/structure_gan_train.yaml', type=str)
+    parser.add_argument('--config_file', default='config/gan/medfe_train.yaml', type=str)
     parser.add_argument('--trainer_name', default='medfe', type=str)
     args = parser.parse_args()
     return args
 
 
 def main(args):
-    import torch
     config = anyconfig.load(open(args.config_file, 'rb'))
+
+    experiment_trainer = getattr(trainer, get_trainer_name(args.trainer_name))(config)
+    experiment_trainer.train()
 
 
 if __name__ == '__main__':

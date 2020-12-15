@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 # email:bingchengzhou@foxmail.com
 # create: 2020/12/14
-import toch
+import torch
 import torch.nn as nn
 
 
