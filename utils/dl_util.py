@@ -4,7 +4,7 @@
 import torch
 from torch.nn import init
 import torch.optim as optim
-from torch.optim import lr_scheduler
+import torch.optim.lr_scheduler as lr_scheduler
 from utils.log import logger
 
 
