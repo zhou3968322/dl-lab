@@ -48,7 +48,7 @@ def get_scheduler(optimizer, lr_policy="lambda", niter=20, start_epoch=1, niter_
             lr_l = 1.0 - max(0, epoch + 1 + start_epoch - niter) / float(niter_decay + 1)
             return lr_l
 
-        scheduler = lr_scheduler.LamdaLR(optimizer, lr_lambda=lambda_rule)
+        scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda_rule)
     elif lr_policy == 'step':
         scheduler = lr_scheduler.StepLR(optimizer, step_size=lr_decay_iters, gamma=0.1)
     elif lr_policy == 'plateau':
