@@ -56,5 +56,5 @@ class BaseModel(object):
 
     def print_networks(self):
         for name in self.model_names:
-            net = getattr(self, 'net' + name)
+            net = getattr(self, name)
             print_network(net)
