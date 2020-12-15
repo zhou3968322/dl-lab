@@ -27,7 +27,7 @@ def init_weights(net, init_type='normal', gain=0.02):
             init.normal(m.weight.data, 1.0, gain)
             init.constant(m.bias.data, 0.0)
 
-    print('initialize network with %s' % init_type)
+    logger.info('initialize network with %s' % init_type)
     net.apply(init_func)
 
 
@@ -41,7 +41,7 @@ def init_net(net, init_type='normal', init_gain=0.02, gpu_ids=[]):
     return net
 
 
-def get_scheduler(optimizer, lr_policy="lambda", niter=20, epoch_count=1, niter_decay=100, lr_decay_iters=50):
+def get_scheduler(optimizer, lr_policy="lambda", niter=20, start_epoch=1, niter_decay=100, lr_decay_iters=50):
     if lr_policy == 'lambda':
         def lambda_rule(epoch):
             lr_l = 1.0 - max(0, epoch + 1 + epoch_count - niter) / float(niter_decay + 1)
