@@ -2,6 +2,9 @@ name: test_medfe
 mode: train
 arch:
   type: medfe
+  init_args:
+    init_type: normal
+    init_gain: 0.2
   encoder:
     type: medfe
     name: Encoder
@@ -9,9 +12,6 @@ arch:
     output_nc: 3
     ngf: 64
     use_dropout: false
-    init_args:
-      init_type: normal
-      init_gain: 0.2
   decoder:
     type: medfe
     name: Decoder
@@ -19,35 +19,16 @@ arch:
     output_nc: 3
     ngf: 64
     use_dropout: false
-    init_args:
-      init_type: normal
-      init_gain: 0.2
   mask_decoder:
-    type: mdefe
+    type: medfe
     name: Decoder
     input_nc: 3
     output_nc: 1
     ngf: 64
     use_dropout: false
-    init_args:
-      init_type: normal
-      init_gain: 0.2
   pc_block:
     type: pc_conv
     name: PCconv
-    init_args:
-      init_type: normal
-      init_gain: 0.2
-  discriminator_mask:
-    type: discriminator
-    name: NLayerDiscriminator
-    input_nc: 3
-    ndf: 64
-    n_layers: 3
-    use_sigmoid: false
-    init_args:
-      init_type: normal
-      init_gain: 0.2
   discriminator_gt:
     type: discriminator
     name: NLayerDiscriminator
@@ -55,9 +36,13 @@ arch:
     ndf: 64
     n_layers: 3
     use_sigmoid: false
-    init_args:
-      init_type: normal
-      init_gain: 0.2
+  discriminator_mask:
+    type: discriminator
+    name: NLayerDiscriminator
+    input_nc: 1
+    ndf: 64
+    n_layers: 3
+    use_sigmoid: false
 loss:
   lambdaP:  2
   lambdaS: 0.1
@@ -74,8 +59,8 @@ trainer:
     start_epoch: 1
     niter: 20
     niter_decay: 100
-#  save_epoch_freq: 1
-  save_step_freq: 1000
+  save_epoch_freq: 1
+#  save_step_freq: 1000
   continue_train: false
   # continue_train的时候需要load epoch参数
 #  load_epoch: 0

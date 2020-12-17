@@ -78,8 +78,15 @@ class Encoder(nn.Module):
         self.Encoder_4 = Encoder_4
         self.Encoder_5 = Encoder_5
         self.Encoder_6 = Encoder_6
+        self.device = torch.device("cuda:0")
+
+    def reset_device(self, device):
+        self.device = device
+
 
     def forward(self, input):
+        if self.device != input.device:
+            input = input.to(self.device)
         y_1 = self.Encoder_1(input)
         y_2 = self.Encoder_2(y_1)
         y_3 = self.Encoder_3(y_2)
@@ -113,6 +120,7 @@ class UnetSkipConnectionDBlock(nn.Module):
 
         self.model = nn.Sequential(*model)
 
+
     def forward(self, x):
         return self.model(x)
 
@@ -137,8 +145,24 @@ class Decoder(nn.Module):
         self.Decoder_4 = Decoder_4
         self.Decoder_5 = Decoder_5
         self.Decoder_6 = Decoder_6
+        self.device = torch.device("cuda:0")
+
+    def reset_device(self, device):
+        self.device = device
 
     def forward(self, input_1, input_2, input_3, input_4, input_5, input_6):
+        if self.device != input_1.device:
+            input_1 = input_1.to(self.device)
+        if self.device != input_2.device:
+            input_2 = input_2.to(self.device)
+        if self.device != input_3.device:
+            input_3 = input_3.to(self.device)
+        if self.device != input_4.device:
+            input_4 = input_4.to(self.device)
+        if self.device != input_5.device:
+            input_5 = input_5.to(self.device)
+        if self.device != input_6.device:
+            input_6 = input_6.to(self.device)
         y_1 = self.Decoder_1(input_6)
         y_2 = self.Decoder_2(torch.cat([y_1, input_5], 1))
         y_3 = self.Decoder_3(torch.cat([y_2, input_4], 1))

@@ -22,12 +22,12 @@ class MedfeTrainer(object):
         self.model = getattr(models, model_name)(config)
         logger.info("model init success")
 
-        tensorboard_log_dir = config["tensorboard"]["log_dir"]
+        tensorboard_log_dir = config["trainer"]["log_dir"]
         self.writer = SummaryWriter(log_dir=tensorboard_log_dir, comment=self.experiment_name)
-        self.display_freq = config["tensorboard"]["display_freq"]
-        self.print_freq = config["tensorboard"]["print_freq"]
-        self.save_epoch_freq = config["tensorboard"].get("save_epoch_freq", 0)
-        self.save_step_freq = config["tensorboard"].get("save_step_freq", 0)
+        self.display_freq = config["trainer"]["display_freq"]
+        self.print_freq = config["trainer"]["print_freq"]
+        self.save_epoch_freq = config["trainer"].get("save_epoch_freq", 0)
+        self.save_step_freq = config["trainer"].get("save_step_freq", 0)
 
         dataset_args = config["datasets"]["train"]["dataset"]
         dataset_type = dataset_args["type"]
@@ -54,14 +54,13 @@ class MedfeTrainer(object):
                 errors = self.model.get_current_errors()
                 t_comp = time.time() - iter_start_time
                 message = '(epoch: %d, steps: %d, time: %.3f) ' % (epoch, self.global_step, t_comp)
-                logger.info(message)
                 for key, value in errors.items():
                     message += '%s: %.5f ' % (key, value)
                     self.writer.add_scalar(key, errors[key], self.global_step)
+                logger.info(message)
             if self.global_step & self.display_freq == 0:
                 visual_input = self.model.get_current_visuals()
-                image_out = torch.cat(list(visual_input), 0)
-                grid = torchvision.utils.make_grid(image_out)
+                grid = torchvision.utils.make_grid(list(visual_input), nrow=3)
                 self.writer.add_image('epoch_(%d)_(%d)' % (epoch, self.global_step), grid, self.global_step)
             if self.save_epoch_freq == 0 and self.save_step_freq > 0 and self.global_step % self.save_step_freq == 0:
                 logger.info('saving the model epoch:{}, step:{}'.format(epoch, self.global_step))

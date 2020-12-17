@@ -4,7 +4,7 @@
 import abc, os
 import torch
 from utils.log import logger
-from utils.dl_util import print_network
+from utils.dl_util import print_network, get_gpu_ids
 
 
 class BaseModel(object):
@@ -13,7 +13,8 @@ class BaseModel(object):
         self.model_names = []
         self.mode = config.pop("mode")
         self.continue_train = False
-        self.device = torch.device('cuda') if torch.cuda.device_count() >= 1 else torch.device('cpu')
+        self.gpu_ids = get_gpu_ids(config["arch"]["init_args"].get("gpu_ids", "0"))
+        self.device = torch.device("cuda") if len(self.gpu_ids) > 0 else torch.device("cpu")
         if self.mode == "train":
             self.save_dir = config["trainer"].pop("save_dir")
             self.continue_train = config["trainer"].pop("continue_train")
@@ -62,4 +63,9 @@ class BaseModel(object):
     def reset_device(self):
         for name in self.model_names:
             net = getattr(self, name)
-            net.to(self.device)
+            if len(self.gpu_ids) > 0:
+                assert (torch.cuda.is_available())
+                if len(self.gpu_ids) > 1:
+                    net = torch.nn.DataParallel(net, self.gpu_ids)
+                else:
+                    net.to(torch.device("cuda:{}".format(self.gpu_ids[0])))

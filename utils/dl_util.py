@@ -11,6 +11,13 @@ from utils.log import logger
 from torch.autograd import Variable
 
 
+def get_gpu_ids(gpu_ids):
+    if isinstance(gpu_ids, str):
+        return list(map(int, gpu_ids.split(',')))
+    else:
+        return gpu_ids
+
+
 def init_weights(net, init_type='normal', gain=0.02):
     def init_func(m):
         classname = m.__class__.__name__
@@ -38,9 +45,12 @@ def init_weights(net, init_type='normal', gain=0.02):
 def init_net(net, init_type='normal', init_gain=0.02, gpu_ids=None):
     if gpu_ids is None:
         gpu_ids = [0]
+    else:
+        gpu_ids = get_gpu_ids(gpu_ids)
     if len(gpu_ids) > 0:
         assert (torch.cuda.is_available())
         if len(gpu_ids) > 1:
+            net.to(gpu_ids[0])
             net = torch.nn.DataParallel(net, gpu_ids)
         else:
             net.to(torch.device("cuda:{}".format(gpu_ids[0])))
@@ -113,16 +123,17 @@ def cal_feat_mask(inMask, conv_layers, threshold):
     lnet = nn.Sequential(*convs)
     if inMask.is_cuda:
 
-        lnet = lnet.cuda()
+        lnet = lnet.to(inMask.device)
     output = lnet(inMask)
     output = (output > threshold).float().mul_(1)
 
     return output
 
 
-def tensor2im(image_tensor, imtype=np.uint8):
-    image_numpy = image_tensor[0].cpu().float().numpy()
+def tensor2im(image_tensor, imtype=np.uint8, max_v=1, min_v=0):
+    image_numpy = image_tensor[0].detach().cpu().float().numpy()
     if image_numpy.shape[0] == 1:
         image_numpy = np.tile(image_numpy, (3,1,1))
-    image_numpy = (np.transpose(image_numpy, (1, 2, 0)) + 1) / 2.0 * 255.0
+    mean_v = max_v + min_v
+    image_numpy = (np.transpose(image_numpy, (1, 2, 0)) + mean_v) / (max_v - min_v) * 255.0
     return image_numpy.astype(imtype)

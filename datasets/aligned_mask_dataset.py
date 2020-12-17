@@ -96,21 +96,21 @@ class AlignedMaskDataset(Dataset):
         w, h = AB.size
         w3 = int(w / 3)
         A = AB.crop((0, 0, w3, h))
-        B = AB.crop((2 * w3, 0, w, h))
-        mask = AB.crop((w3, 0, 2 * w3, h)).convert("L")
-        mask_img = ImageOps.invert(mask)
+        B = AB.crop((w3, 0, 2 * w3, h))
+        mask = AB.crop((2 * w3, 0, w, h)).convert("L")
 
         current_transform = default_transform()
         gray_transform = default_transform(grayscale=True)
 
         A = current_transform(A)
         B = current_transform(B)
-        noise_mask = gray_transform(mask_img)
-        # 初期训练的时候 mask_img > 0.2 ，并且不将mask填充. （这里对mask的处理0.2其实可以作为一个随机数）
+        noise_mask = gray_transform(mask)
+        # 初期训练的时候 mask_img > 0 ，并且不将mask填充. （这里对mask的处理0.2其实可以作为一个随机数）
         # 到后期训练的时候需要将mask在input中填充（这是为了捕捉到更多结构信息，而非颜色信息）
         # 网路需要学到颜色信息。
-        # apply the same transform to both A and B
-        noise_mask = noise_mask > 0.2
+        # normalize 防止如果包含resize的情况, 插值的问题
+        noise_mask[noise_mask >= -0.2] = 1.0
+        noise_mask[noise_mask < 0.2] = -1.0
 
         A_local = A[:, x0: x1, y0:y1]
         B_local = B[:, x0: x1, y0:y1]

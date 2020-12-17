@@ -5,7 +5,7 @@ import networks
 import torch
 from utils.dl_util import init_net
 from loss.gan_loss import VGG16, PerceptualLoss, StyleLoss, GANLoss
-from utils.dl_util import get_scheduler, get_optimizer, set_requires_grad
+from utils.dl_util import get_scheduler, get_optimizer, set_requires_grad, tensor2im
 from models.base_model import BaseModel
 from collections import OrderedDict
 
@@ -15,44 +15,45 @@ class Medfe(BaseModel):
     def __init__(self, config):
         super(Medfe, self).__init__(config)
         arch_config = config.pop('arch')
-        encoder_init_args = arch_config["encoder"].pop("init_args")
+        init_args = arch_config.pop("init_args")
+        self.device0 = torch.device("cuda:0")
+        self.device1 = torch.device("cuda:1")
         model_names = []
         self.encoder = getattr(getattr(networks, arch_config["encoder"].pop("type")),
                                arch_config["encoder"].pop("name"))(**arch_config["encoder"])
-        self.encoder = init_net(self.encoder, **encoder_init_args)
+        self.encoder = init_net(self.encoder, **init_args)
         model_names.append("encoder")
-        decoder_init_args = arch_config["decoder"].pop("init_args")
         self.decoder = getattr(getattr(networks, arch_config["decoder"].pop("type")),
                                arch_config["decoder"].pop("name"))(**arch_config["decoder"])
-        self.decoder = init_net(self.decoder, **decoder_init_args)
+        self.decoder = init_net(self.decoder, **init_args)
         model_names.append("decoder")
-        mask_decoder_init_args = arch_config["mask_decoder"].pop("init_args")
         self.mask_decoder = getattr(getattr(networks, arch_config["mask_decoder"].pop("type")),
                                     arch_config["mask_decoder"].pop("name"))(**arch_config["mask_decoder"])
-        self.mask_decoder = init_net(self.mask_decoder, **mask_decoder_init_args)
+        self.mask_decoder = init_net(self.mask_decoder, **init_args)
+        self.mask_decoder.reset_device(self.device0)
         model_names.append("mask_decoder")
-        pc_block_init_args = arch_config["pc_block"].pop("init_args")
         self.pc_block = getattr(getattr(networks, arch_config["pc_block"].pop("type")),
                                 arch_config["pc_block"].pop("name"))(**arch_config["pc_block"])
-        self.pc_block = init_net(self.pc_block, **pc_block_init_args)
+        self.pc_block = init_net(self.pc_block, **init_args, gpu_ids=[1])
+        self.pc_block.reset_device(self.device1)
         model_names.append("pc_block")
         if self.mode == "train":
-            discriminator_gt_args = arch_config["discriminator_gt"].pop("init_args")
             self.discriminator_gt = getattr(getattr(networks, arch_config["discriminator_gt"].pop("type")),
                                             arch_config["discriminator_gt"].pop("name"))(
                 **arch_config["discriminator_gt"])
-            self.discriminator_gt = init_net(self.discriminator_gt, **discriminator_gt_args)
+            self.discriminator_gt = init_net(self.discriminator_gt, **init_args)
             model_names.append("discriminator_gt")
-            discriminator_mask_args = arch_config["discriminator_mask"].pop("init_args")
             self.discriminator_mask = getattr(getattr(networks, arch_config["discriminator_mask"].pop("type")),
                                               arch_config["discriminator_mask"].pop("name"))(
                 **arch_config["discriminator_mask"])
-            self.discriminator_mask = init_net(self.discriminator_mask, **discriminator_mask_args)
+            self.discriminator_mask = init_net(self.discriminator_mask, **init_args)
 
         self.model_names = model_names
 
         if self.mode == "train":
-            self.vgg = VGG16().cuda()
+            self.vgg = VGG16().to(self.device0)
+            # if len(self.gpu_ids) > 1:
+            #     self.vgg = torch.nn.DataParallel(self.vgg, self.gpu_ids)
             loss_args = config.pop("loss")
             self.PerceptualLoss = PerceptualLoss(vgg_module=self.vgg)
             self.lambdaP = loss_args.pop("lambdaP")
@@ -60,13 +61,13 @@ class Medfe(BaseModel):
             self.lambdaS = loss_args.pop("lambdaS")
             self.criterionL1 = torch.nn.L1Loss()
             self.lambdaL1 = loss_args.pop("lambdaL1")
-            if self.device.type == "cuda":
+            if len(self.gpu_ids) > 0:
                 self.criterionGAN = GANLoss(tensor=torch.cuda.FloatTensor)
             else:
                 self.criterionGAN = GANLoss()
             self.lambdaGan = loss_args.pop("lambdaGan")
 
-        self.reset_device()
+        # self.reset_device()
 
         if self.mode == "train":
             optimizer_args = config["trainer"].pop("optimizer")
@@ -93,17 +94,17 @@ class Medfe(BaseModel):
     def train(self, data):
         self.input_a = data["A"].to(self.device)
         self.input_b = data["B"].to(self.device)
-        self.noise_mask = (data["noise_mask"].to(self.device)).float()  # noise_mask, noise is 1.0
+        self.noise_mask = (data["noise_mask"].to(self.device))  # noise_mask, hole is 0.0
 
         fake_p_1, fake_p_2, fake_p_3, fake_p_4, fake_p_5, fake_p_6 = self.encoder(self.input_a)
         De_in = [fake_p_1, fake_p_2, fake_p_3, fake_p_4, fake_p_5, fake_p_6]
-        self.fake_mask = self.mask_decoder(De_in)
+        self.fake_mask = self.mask_decoder(fake_p_1, fake_p_2, fake_p_3, fake_p_4, fake_p_5, fake_p_6)
         x_out = self.pc_block(De_in, self.noise_mask)
-        x_out_real = self.pc_block(De_in, self.fake_mask)
+        # x_out_real = self.pc_block(De_in, self.fake_mask)
         self.fake_out = self.decoder(x_out[0], x_out[1], x_out[2],
                                      x_out[3], x_out[4], x_out[5])
-        self.fake_out_real = self.decoder(x_out_real[0], x_out_real[1], x_out_real[2],
-                                          x_out_real[3], x_out_real[4], x_out_real[5])
+        # self.fake_out_real = self.decoder(x_out_real[0], x_out_real[1], x_out_real[2],
+        #                                   x_out_real[3], x_out_real[4], x_out_real[5])
         self.backward()
 
     def backward(self):
@@ -167,8 +168,9 @@ class Medfe(BaseModel):
         self.loss_G = self.loss_l1 * self.lambdaL1 + self.loss_G_GAN * self.lambdaGan + \
                       self.perceptual_loss * self.lambdaP + self.style_loss * self.lambdaS
         self.loss_G_mask = self.loss_l1_mask * self.lambdaL1 + self.loss_G_GAN_mask * self.lambdaGan
+        self.loss_G_mask.backward(retain_graph=True)
         self.loss_G.backward()
-        self.loss_G_mask.backward()
+
 
     def backward_discriminator(self):
         # fake_local = self.fake_out[:, :, self.crop_x:self.crop_x + 64, self.crop_y:self.crop_y + 64]
@@ -190,13 +192,15 @@ class Medfe(BaseModel):
         self.loss_D_mask.backward()
 
     def get_current_visuals(self):
-        input_image = (self.input_a.data.cpu() + 1) / 2.0
-        fake_mask = (self.fake_mask.data.cpu() + 1) / 2.0
-        noise_mask = (self.noise_mask.data.cpu() + 1) / 2.0
-        fake_image_real = (self.fake_out_real.data.cpu() + 1) / 2.0
-        fake_image = (self.fake_out.data.cpu() + 1) / 2.0
-        real_gt = (self.input_b.data.cpu() + 1) / 2.0
-        return input_image, fake_mask, noise_mask, fake_image_real, fake_image, real_gt
+        input_image = (self.input_a.data.cpu()[0, :, :, :] + 1) / 2.0
+        b, c, h, w = self.noise_mask.size()
+        fake_mask = ((self.fake_mask.data.cpu()[0, :, :, :] + 1) / 2.0).expand(3, h, w)
+        noise_mask = ((self.noise_mask.data.cpu()[0, :, :, :] + 1) / 2.0).expand(3, h, w)
+        # fake_image_real = (self.fake_out_real.data.cpu() + 1) / 2.0
+        fake_image = (self.fake_out.data.cpu()[0, :, :, :] + 1) / 2.0
+        real_gt = (self.input_b.data.cpu()[0, :, :, :] + 1) / 2.0
+        return input_image, fake_mask, noise_mask, fake_image, real_gt
+        # return input_image, fake_mask, noise_mask, fake_image_real, fake_image, real_gt
 
     def get_current_errors(self):
         # show the current loss

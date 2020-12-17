@@ -7,8 +7,6 @@ import torchvision.transforms as transforms
 
 def default_transform(grayscale=False, convert=True):
     transform_list = []
-    if grayscale:
-        transform_list.append(transforms.Grayscale(1))
     if convert:
         transform_list += [transforms.ToTensor()]
         if grayscale:

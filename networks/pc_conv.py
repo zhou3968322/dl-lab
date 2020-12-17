@@ -29,7 +29,7 @@ class PartialConv(nn.Module):
         # W^T* (M .* X) / sum(M) + b = [C(M .* X) – C(0)] / D(M) + C(0)
 
         input = inputt[0]
-        mask = inputt[1].float().cuda()
+        mask = inputt[1].float().to(inputt[1].device)
         # output W^T *x
         output = self.input_conv(input * mask)
         if self.input_conv.bias is not None:
@@ -237,8 +237,18 @@ class PCconv(nn.Module):
         self.cov_3 = nn.Sequential(*seuqence_3)
         self.cov_5 = nn.Sequential(*seuqence_5)
         self.cov_7 = nn.Sequential(*seuqence_7)
+        self.device = torch.device("cuda:0")
+
+    def reset_device(self, device):
+        self.device = device
 
     def forward(self, input, mask):
+        for i in range(len(input)):
+            if self.device != input[i].device:
+                input[i] = input[i].to(self.device)
+        if self.device != mask.device:
+            mask = mask.to(self.device)
+
         mask = cal_feat_mask(mask, self.conv_feat_mask_layer_num, 1)
         # input[2]:256 32 32
         b, c, h, w = input[2].size()
