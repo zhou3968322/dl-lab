@@ -51,7 +51,7 @@ loss:
 trainer:
   optimizer:
     optimizer_type: "adam"
-    lr: 0.0006
+    lr: 0.0004
     beta1: 0.5
   scheduler:
     lr_policy: lambda
