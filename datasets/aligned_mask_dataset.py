@@ -6,6 +6,7 @@ from datasets.transforms import default_transform
 from torch.utils.data.dataset import Dataset
 from utils.dataset_util import make_dataset
 from PIL import Image, ImageOps
+import torch
 import numpy as np
 import random
 from utils.img_util import convert_poly_to_rect
@@ -111,12 +112,7 @@ class AlignedMaskDataset(Dataset):
         # normalize 防止如果包含resize的情况, 插值的问题
         noise_mask[noise_mask >= -0.2] = 1.0
         noise_mask[noise_mask < 0.2] = -1.0
-
-        A_local = A[:, x0: x1, y0:y1]
-        B_local = B[:, x0: x1, y0:y1]
-        noise_mask_local = noise_mask[:, x0: x1, y0:y1]
-        return {'A': A, 'B': B, "noise_mask": noise_mask, "A_local": A_local,
-                "B_local": B_local, "noise_mask_local": noise_mask_local}
+        return {'A': A, 'B': B, "noise_mask": noise_mask}
 
     def __len__(self):
         """Return the total number of images in the dataset."""
