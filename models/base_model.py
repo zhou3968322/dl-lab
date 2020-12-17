@@ -17,6 +17,7 @@ class BaseModel(object):
         self.device = torch.device("cuda") if len(self.gpu_ids) > 0 else torch.device("cpu")
         if self.mode == "train":
             self.save_dir = config["trainer"].pop("save_dir")
+            os.makedirs(self.save_dir, exist_ok=True)
             self.continue_train = config["trainer"].pop("continue_train")
 
     def load_networks(self, which_epoch):
