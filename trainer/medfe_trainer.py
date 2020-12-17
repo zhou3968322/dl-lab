@@ -58,7 +58,7 @@ class MedfeTrainer(object):
                     message += '%s: %.5f ' % (key, value)
                     self.writer.add_scalar(key, errors[key], self.global_step)
                 logger.info(message)
-            if self.global_step & self.display_freq == 0:
+            if self.global_step % self.display_freq == 0:
                 visual_input = self.model.get_current_visuals()
                 grid = torchvision.utils.make_grid(list(visual_input), nrow=3)
                 self.writer.add_image('epoch_{}_step_{}'.format(epoch, self.global_step), grid, self.global_step)
