@@ -65,8 +65,8 @@ trainer:
 #  load_epoch: 0
   display_freq: 40
   print_freq: 40
-  save_dir: "./checkpoints/test_medfe"
-  log_dir: "./tensorboard/test_medfe"
+  save_dir: "./checkpoints/medfe"
+  log_dir: "./tensorboard/medfe"
 
 datasets:
   train:
