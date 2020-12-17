@@ -2,4 +2,4 @@
 # email:bingchengzhou@foxmail.com
 # create: 2020/12/2
 
-from .aligned_mask_dataset import AlignedDataset
+from .aligned_mask_dataset import AlignedMaskDataset

@@ -3,9 +3,12 @@
 # create: 2020/12/14
 import torch
 from torch.nn import init
+import torch.nn as nn
+import numpy as np
 import torch.optim as optim
 from torch.optim import lr_scheduler
 from utils.log import logger
+from torch.autograd import Variable
 
 
 def init_weights(net, init_type='normal', gain=0.02):
@@ -32,12 +35,15 @@ def init_weights(net, init_type='normal', gain=0.02):
     net.apply(init_func)
 
 
-def init_net(net, init_type='normal', init_gain=0.02, gpu_ids=[]):
+def init_net(net, init_type='normal', init_gain=0.02, gpu_ids=None):
+    if gpu_ids is None:
+        gpu_ids = [0]
     if len(gpu_ids) > 0:
         assert (torch.cuda.is_available())
-        net.to(gpu_ids[0])
-        if len(gpu_ids) >= 1:
+        if len(gpu_ids) > 1:
             net = torch.nn.DataParallel(net, gpu_ids)
+        else:
+            net.to(torch.device("cuda:{}".format(gpu_ids[0])))
     init_weights(net, init_type, gain=init_gain)
     return net
 
@@ -92,3 +98,31 @@ def print_network(net):
         num_params += param.numel()
     logger.info(net)
     logger.info('Total number of parameters: %d' % num_params)
+
+
+def cal_feat_mask(inMask, conv_layers, threshold):
+    assert inMask.dim() == 4, "mask must be 4 dimensions"
+    assert inMask.size(0) == 1, "the first dimension must be 1 for mask"
+    inMask = inMask.float()
+    convs = []
+    inMask = Variable(inMask, requires_grad = False)
+    for id_net in range(conv_layers):
+        conv = nn.Conv2d(1,1,4,2,1, bias=False)
+        conv.weight.data.fill_(1/16)
+        convs.append(conv)
+    lnet = nn.Sequential(*convs)
+    if inMask.is_cuda:
+
+        lnet = lnet.cuda()
+    output = lnet(inMask)
+    output = (output > threshold).float().mul_(1)
+
+    return output
+
+
+def tensor2im(image_tensor, imtype=np.uint8):
+    image_numpy = image_tensor[0].cpu().float().numpy()
+    if image_numpy.shape[0] == 1:
+        image_numpy = np.tile(image_numpy, (3,1,1))
+    image_numpy = (np.transpose(image_numpy, (1, 2, 0)) + 1) / 2.0 * 255.0
+    return image_numpy.astype(imtype)

@@ -3,6 +3,9 @@
 # create: 2020/12/
 import torch
 import torch.nn as nn
+import numpy as np
+from utils.dl_util import cal_feat_mask
+import torch.nn.functional as F
 
 
 class PartialConv(nn.Module):
@@ -184,20 +187,46 @@ class ConvUp(nn.Module):
 
 
 class PCconv(nn.Module):
-    def __init__(self):
+    def __init__(self, input_w=1024, nc=None, nw=None):
         super(PCconv, self).__init__()
-        self.down_128 = ConvDown(64, 128, 4, 2, padding=1, layers=2)
-        self.down_64 = ConvDown(128, 256, 4, 2, padding=1)
-        self.down_32 = ConvDown(256, 256, 1, 1)
-        self.down_16 = ConvDown(512, 512, 4, 2, padding=1, activ=False)
-        self.down_8 = ConvDown(512, 512, 4, 2, padding=1, layers=2, activ=False)
-        self.down_4 = ConvDown(512, 512, 4, 2, padding=1, layers=3, activ=False)
-        self.down = ConvDown(768, 256, 1, 1)
-        self.fuse = ConvDown(512, 512, 1, 1)
-        self.up = ConvUp(512, 256, 1, 1)
-        self.up_128 = ConvUp(512, 64, 1, 1)
-        self.up_64 = ConvUp(512, 128, 1, 1)
-        self.up_32 = ConvUp(512, 256, 1, 1)
+        # input_w mush be 2^k, 64设置为
+        ni = 6
+        if nc is None:
+            nc = [64, 128, 256, 512, 512, 512]
+        if nw is None:
+            nw = [512, 256, 128, 64, 32, 16]
+        self.nc = nc
+        self.nw = nw
+        # 使用第三层作为mask信息的特征feature
+        mask_w = nw[2]
+        mask_c = nc[2]
+        self.mask_w = mask_w
+        self.conv_feat_mask_layer_num = int(np.log2(input_w / mask_w))
+        self.activation = nn.LeakyReLU(negative_slope=0.2)
+
+        # feature sample 层, 分为上采样和下采样
+        self.down_1 = ConvDown(nc[0], 2 * nc[0], 4, 2, padding=1, layers=int(np.log2(nw[0] / mask_w)))
+        self.down_2 = ConvDown(nc[1], 2 * nc[1], 4, 2, padding=1, layers=int(np.log2(nw[1] / mask_w)))
+        self.down_3 = ConvDown(nc[2], nc[2], 1, 1)
+        # 上采样层基本一致
+        self.up = ConvUp(512, mask_c, 1, 1)
+
+        # feature 层融合后的下采样层
+        self.down = ConvDown(3 * mask_c, mask_c, 1, 1)
+
+        # texture和structure融合后的下采样层
+        self.fuse = ConvDown(2 * mask_c, 2 * mask_c, 1, 1)
+
+        # texture和structure融合后上采样和下采样到input channel中
+        self.up_1 = ConvUp(2 * mask_c, nc[0], 1, 1)
+        self.up_2 = ConvUp(2 * mask_c, nc[1], 1, 1)
+        self.up_3 = ConvUp(2 * mask_c, nc[2], 1, 1)
+
+        self.down_4 = ConvDown(2 * mask_c, 2 * mask_c, 4, 2, padding=1, layers=int(np.log2(mask_w / nw[3])))
+        self.down_5 = ConvDown(2 * mask_c, 2 * mask_c, 4, 2, padding=1, layers=int(np.log2(mask_w / nw[4])))
+        self.down_6 = ConvDown(2 * mask_c, 2 * mask_c, 4, 2, padding=1, layers=int(np.log2(mask_w / nw[5])))
+
+        # partial conv层
         seuqence_3 = []
         seuqence_5 = []
         seuqence_7 = []
@@ -205,14 +234,12 @@ class PCconv(nn.Module):
             seuqence_3 += [PCBActiv(256, 256, innorm=True)]
             seuqence_5 += [PCBActiv(256, 256, sample='same-5', innorm=True)]
             seuqence_7 += [PCBActiv(256, 256, sample='same-7', innorm=True)]
-
         self.cov_3 = nn.Sequential(*seuqence_3)
         self.cov_5 = nn.Sequential(*seuqence_5)
         self.cov_7 = nn.Sequential(*seuqence_7)
 
-
     def forward(self, input, mask):
-        mask =  util.cal_feat_mask(mask, 3, 1)
+        mask = cal_feat_mask(mask, self.conv_feat_mask_layer_num, 1)
         # input[2]:256 32 32
         b, c, h, w = input[2].size()
         mask_1 = torch.add(torch.neg(mask.float()), 1)
@@ -225,54 +252,44 @@ class PCconv(nn.Module):
         x_5 = self.activation(input[4])
         x_6 = self.activation(input[5])
         # Change the shape of each layer and intergrate low-level/high-level features
-        x_1 = self.down_128(x_1)
-        x_2 = self.down_64(x_2)
-        x_3 = self.down_32(x_3)
-        x_4 = self.up(x_4, (32, 32))
-        x_5 = self.up(x_5, (32, 32))
-        x_6 = self.up(x_6, (32, 32))
+
+        x_1 = self.down_1(x_1)
+        x_2 = self.down_2(x_2)
+        x_3 = self.down_3(x_3)
+        x_4 = self.up(x_4, (self.mask_w, self.mask_w))
+        x_5 = self.up(x_5, (self.mask_w, self.mask_w))
+        x_6 = self.up(x_6, (self.mask_w, self.mask_w))
 
         # The first three layers are Texture/detail
         # The last three layers are Structure
-        x_DE = torch.cat([x_1, x_2, x_3], 1)
-        x_ST = torch.cat([x_4, x_5, x_6], 1)
+        x_texture = torch.cat([x_1, x_2, x_3], 1)
+        x_structure = torch.cat([x_4, x_5, x_6], 1)
 
-        x_ST = self.down(x_ST)
-        x_DE = self.down(x_DE)
-        x_ST = [x_ST, mask_1]
-        x_DE = [x_DE, mask_1]
+        x_texture = self.down(x_texture)
+        x_structure = self.down(x_structure)
 
         # Multi Scale PConv fill the Details
-        x_DE_3 = self.cov_3(x_DE)
-        x_DE_5 = self.cov_5(x_DE)
-        x_DE_7 = self.cov_7(x_DE)
-        x_DE_fuse = torch.cat([x_DE_3[0], x_DE_5[0], x_DE_7[0]], 1)
-        x_DE_fi = self.down(x_DE_fuse)
+        x_texture_3 = self.cov_3([x_texture, mask_1])
+        x_texture_5 = self.cov_5([x_texture, mask_1])
+        x_texture_7 = self.cov_7([x_texture, mask_1])
+        x_texture_fuse = torch.cat([x_texture_3[0], x_texture_5[0], x_texture_7[0]], 1)
+        x_texture_fi = self.down(x_texture_fuse)
 
         # Multi Scale PConv fill the Structure
-        x_ST_3 = self.cov_3(x_ST)
-        x_ST_5 = self.cov_5(x_ST)
-        x_ST_7 = self.cov_7(x_ST)
-        x_ST_fuse = torch.cat([x_ST_3[0], x_ST_5[0], x_ST_7[0]], 1)
-        x_ST_fi = self.down(x_ST_fuse)
+        x_structure_3 = self.cov_3([x_structure, mask_1])
+        x_structure_5 = self.cov_5([x_structure, mask_1])
+        x_structure_7 = self.cov_7([x_structure, mask_1])
+        x_structure_fuse = torch.cat([x_structure_3[0], x_structure_5[0], x_structure_7[0]], 1)
+        x_structure_fi = self.down(x_structure_fuse)
 
-        x_cat = torch.cat([x_ST_fi, x_DE_fi], 1)
-        x_cat_fuse = self.fuse(x_cat)
+        x_cat_fuse = self.fuse(torch.cat([x_structure_fi, x_texture_fi], 1))
 
-        # Feature equalizations
-        x_final = self.base(x_cat_fuse)
-
-        # Add back to the input
-        x_ST = x_final
-        x_DE = x_final
-        x_1 = self.up_128(x_DE, (128, 128)) + input[0]
-        x_2 = self.up_64(x_DE, (64, 64)) + input[1]
-        x_3 = self.up_32(x_DE, (32, 32)) + input[2]
-        x_4 = self.down_16(x_ST) + input[3]
-        x_5 = self.down_8(x_ST) + input[4]
-        x_6 = self.down_4(x_ST) + input[5]
+        x_1 = self.up_1(x_cat_fuse, (self.nw[0], self.nw[0])) + input[0]
+        x_2 = self.up_2(x_cat_fuse, (self.nw[1], self.nw[1])) + input[1]
+        x_3 = self.up_3(x_cat_fuse, (self.nw[2], self.nw[2])) + input[2]
+        x_4 = self.down_4(x_cat_fuse) + input[3]
+        x_5 = self.down_5(x_cat_fuse) + input[4]
+        x_6 = self.down_6(x_cat_fuse) + input[5]
 
         out = [x_1, x_2, x_3, x_4, x_5, x_6]
-        loss = [x_ST_fi, x_DE_fi]
-        out_final = [out, loss]
-        return out_final
+        return out

@@ -22,6 +22,16 @@ arch:
     init_args:
       init_type: normal
       init_gain: 0.2
+  mask_decoder:
+    type: mdefe
+    name: Decoder
+    input_nc: 3
+    output_nc: 1
+    ngf: 64
+    use_dropout: false
+    init_args:
+      init_type: normal
+      init_gain: 0.2
   pc_block:
     type: pc_conv
     name: PCconv
@@ -49,14 +59,14 @@ arch:
       init_type: normal
       init_gain: 0.2
 loss:
-  lambdaP:  0.2
-  lambdaS: 2
+  lambdaP:  2
+  lambdaS: 0.1
   lambdaL1: 10
-  lambdaGan: 0.2
+  lambdaGan: 1
 trainer:
   optimizer:
     optimizer_type: "adam"
-    lr: 0.0005
+    lr: 0.0006
     beta1: 0.5
   scheduler:
     lr_policy: lambda
@@ -64,16 +74,15 @@ trainer:
     start_epoch: 1
     niter: 20
     niter_decay: 100
-
-  save_epoch_freq: 1
+#  save_epoch_freq: 1
+  save_step_freq: 1000
   continue_train: false
   # continue_train的时候需要load epoch参数
 #  load_epoch: 0
-  save_dir: "./checkpoints/test_medfe"
-
-tensorboard:
   display_freq: 100
   print_freq: 100
+  save_dir: "./checkpoints/test_medfe"
+  log_dir: "./tensorboard/test_medfe"
 
 datasets:
   train:
@@ -86,4 +95,3 @@ datasets:
       shuffle: true
       pin_memory: true
       num_workers: 0
-      collate_fn: ''

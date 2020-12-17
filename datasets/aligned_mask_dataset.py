@@ -48,7 +48,7 @@ class AlignedMaskDataset(Dataset):
     During test time, you need to prepare a directory '/path/to/data/test'.
     """
 
-    def __init__(self, data_root, phase="train"):
+    def __init__(self, data_root, phase="train", max_dataset_size=np.inf):
         """Initialize this dataset class.
 
         Parameters:
@@ -57,12 +57,12 @@ class AlignedMaskDataset(Dataset):
         super(AlignedMaskDataset, self).__init__()
         self.dir_AB = os.path.join(data_root, phase)  # get the image directory
         mask_dir = os.path.join(data_root, "mask")
-        self.AB_paths = sorted(make_dataset(self.dir_AB, opt.max_dataset_size))  # get image paths
+        self.AB_paths = sorted(make_dataset(self.dir_AB, max_dataset_size))  # get image paths
         self.dataset_len = len(self.AB_paths)
         mask_paths = []
         for ab_path in self.AB_paths:
             ab_name = os.path.basename(ab_path)
-            mask_name = "{}_{}.json".format(opt.phase, ab_name.rsplit('.', 1)[0])
+            mask_name = "{}_{}.json".format(phase, ab_name.rsplit('.', 1)[0])
             mask_path = os.path.join(mask_dir, mask_name)
             mask_paths.append(mask_path)
             assert os.path.isfile(mask_path)
@@ -97,25 +97,26 @@ class AlignedMaskDataset(Dataset):
         w3 = int(w / 3)
         A = AB.crop((0, 0, w3, h))
         B = AB.crop((2 * w3, 0, w, h))
-        mask = AB.crop((w3, 0, 2 * w3, h))
+        mask = AB.crop((w3, 0, 2 * w3, h)).convert("L")
         mask_img = ImageOps.invert(mask)
 
         current_transform = default_transform()
+        gray_transform = default_transform(grayscale=True)
 
         A = current_transform(A)
         B = current_transform(B)
-        mask = current_transform(mask)
+        noise_mask = gray_transform(mask_img)
         # 初期训练的时候 mask_img > 0.2 ，并且不将mask填充. （这里对mask的处理0.2其实可以作为一个随机数）
         # 到后期训练的时候需要将mask在input中填充（这是为了捕捉到更多结构信息，而非颜色信息）
         # 网路需要学到颜色信息。
         # apply the same transform to both A and B
-        mask = mask_img > 0.2
+        noise_mask = noise_mask > 0.2
 
         A_local = A[:, x0: x1, y0:y1]
         B_local = B[:, x0: x1, y0:y1]
-        mask_local = mask[:, x0: x1, y0:y1]
-        return {'A': A, 'B': B, "mask": crop_box, "A_local": A_local,
-                "B_local": B_local, "mask_local": mask_local}
+        noise_mask_local = noise_mask[:, x0: x1, y0:y1]
+        return {'A': A, 'B': B, "noise_mask": noise_mask, "A_local": A_local,
+                "B_local": B_local, "noise_mask_local": noise_mask_local}
 
     def __len__(self):
         """Return the total number of images in the dataset."""

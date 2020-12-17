@@ -21,7 +21,7 @@ class BaseModel(object):
     def load_networks(self, which_epoch):
         for name in self.model_names:
             if isinstance(name, str):
-                load_filename = '{}_net_epoch_{}.pth'.format(name, which_epoch)
+                load_filename = '{}_net_epoch{}.pth'.format(name, which_epoch)
                 load_path = os.path.join(self.save_dir, load_filename)
 
                 net = getattr(self, 'net' + name)
@@ -37,7 +37,7 @@ class BaseModel(object):
     def save_networks(self, which_epoch):
         for name in self.model_names:
             if isinstance(name, str):
-                save_filename = '{}_net_epoch_{}.pth'.format(name, which_epoch)
+                save_filename = '{}_net_epoch{}.pth'.format(name, which_epoch)
                 save_path = os.path.join(self.save_dir, save_filename).replace('\\', '/')
                 net = getattr(self, name)
                 optimize = getattr(self, 'optimizer_' + name)
@@ -58,3 +58,8 @@ class BaseModel(object):
         for name in self.model_names:
             net = getattr(self, name)
             print_network(net)
+
+    def reset_device(self):
+        for name in self.model_names:
+            net = getattr(self, name)
+            net.to(self.device)
