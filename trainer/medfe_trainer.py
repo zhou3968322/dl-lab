@@ -61,7 +61,7 @@ class MedfeTrainer(object):
             if self.global_step & self.display_freq == 0:
                 visual_input = self.model.get_current_visuals()
                 grid = torchvision.utils.make_grid(list(visual_input), nrow=3)
-                self.writer.add_image('epoch_(%d)_(%d)' % (epoch, self.global_step), grid, self.global_step)
+                self.writer.add_image('epoch_{}_step_{}'.format(epoch, self.global_step), grid, self.global_step)
             if self.save_epoch_freq == 0 and self.save_step_freq > 0 and self.global_step % self.save_step_freq == 0:
                 logger.info('saving the model epoch:{}, step:{}'.format(epoch, self.global_step))
                 self.model.save_networks(epoch)
