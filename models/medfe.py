@@ -95,6 +95,9 @@ class Medfe(BaseModel):
             self.optimizer_discriminator_mask = get_optimizer(self.discriminator_mask, **optimizer_args)
             optimizers = [self.optimizer_encoder, self.optimizer_decoder, self.optimizer_pc_block,
                           self.optimizer_discriminator_gt, self.optimizer_discriminator_mask]
+            if self.has_mask_encoder:
+                self.optimizer_mask_encoder = get_optimizer(self.mask_encoder, **optimizer_args)
+                optimizers.append(self.optimizer_mask_encoder)
             for optimizer in optimizers:
                 schedulers.append(get_scheduler(optimizer, **scheduler_args))
             self.optimizers = optimizers
