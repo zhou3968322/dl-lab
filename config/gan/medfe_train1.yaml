@@ -1,8 +1,7 @@
-name: medfe_with_mask_decoder
+name: medfe1
 mode: train
 arch:
   type: medfe
-  has_mask_encoder: true
   init_args:
     init_type: normal
     init_gain: 0.2
@@ -20,17 +19,10 @@ arch:
     output_nc: 3
     ngf: 64
     use_dropout: false
-  mask_encoder:
-    type: medfe
-    name: Encoder
-    input_nc: 1
-    output_nc: 1
-    ngf: 64
-    use_dropout: false
   mask_decoder:
     type: medfe
     name: Decoder
-    input_nc: 1
+    input_nc: 3
     output_nc: 1
     ngf: 64
     use_dropout: false
@@ -43,14 +35,16 @@ arch:
     input_nc: 3
     ndf: 64
     n_layers: 3
-    use_sigmoid: false
+    use_sigmoid: true
+    use_spectral: false
   discriminator_mask:
     type: discriminator
     name: NLayerDiscriminator
     input_nc: 1
     ndf: 64
     n_layers: 3
-    use_sigmoid: false
+    use_sigmoid: true
+    use_spectral: false
 loss:
   lambdaP:  5
   lambdaS: 0.1
@@ -73,8 +67,8 @@ trainer:
 #  load_epoch: 0
   display_freq: 40
   print_freq: 40
-  save_dir: "./checkpoints/medfe_with_mask_decoder"
-  log_dir: "./tensorboard/medfe_with_mask_decoder"
+  save_dir: "./checkpoints/medfe1"
+  log_dir: "./tensorboard/medfe1"
 
 datasets:
   train:
@@ -84,6 +78,6 @@ datasets:
         data_root: /data_ssd/ocr/zhoubingcheng/gan_datasets/gan_aligned_crop_data_with_mask_small/
     loader:
       batch_size: 1
-      shuffle: true
+      shuffle: false
       pin_memory: true
       num_workers: 16

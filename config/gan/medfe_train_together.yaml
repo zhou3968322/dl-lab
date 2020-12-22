@@ -28,7 +28,7 @@ arch:
     ngf: 64
     use_dropout: false
   pc_block:
-    type: test_pc_conv
+    type: pc_conv
     name: PCconv
   discriminator_gt:
     type: discriminator
@@ -77,6 +77,6 @@ datasets:
         data_root: /data_ssd/ocr/zhoubingcheng/gan_datasets/gan_aligned_crop_data_with_mask_small/
     loader:
       batch_size: 1
-      shuffle: true
+      shuffle: false
       pin_memory: true
       num_workers: 16

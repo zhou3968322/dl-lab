@@ -1,7 +1,9 @@
-name: medfe_lr
+name: medfe_inner_loss_mask_decoder
 mode: train
 arch:
   type: medfe
+  use_inner_loss: true
+  has_mask_encoder: true
   init_args:
     init_type: normal
     init_gain: 0.2
@@ -19,10 +21,17 @@ arch:
     output_nc: 3
     ngf: 64
     use_dropout: false
+  mask_encoder:
+    type: medfe
+    name: Encoder
+    input_nc: 3
+    output_nc: 1
+    ngf: 64
+    use_dropout: false
   mask_decoder:
     type: medfe
     name: Decoder
-    input_nc: 3
+    input_nc: 1
     output_nc: 1
     ngf: 64
     use_dropout: false
@@ -51,7 +60,7 @@ loss:
 trainer:
   optimizer:
     optimizer_type: "adam"
-    lr: 0.0004
+    lr: 0.0002
     beta1: 0.5
   scheduler:
     lr_policy: lambda
@@ -63,10 +72,10 @@ trainer:
   continue_train: false
   # continue_train的时候需要load epoch参数
 #  load_epoch: 0
-  display_freq: 20
-  print_freq: 20
-  save_dir: "./checkpoints/medfe_lr"
-  log_dir: "./tensorboard/medfe_lr"
+  display_freq: 40
+  print_freq: 40
+  save_dir: "./checkpoints/medfe_inner_loss_mask_decoder"
+  log_dir: "./tensorboard/medfe_inner_loss_mask_decoder"
 
 datasets:
   train:
@@ -76,6 +85,6 @@ datasets:
         data_root: /data_ssd/ocr/zhoubingcheng/gan_datasets/gan_aligned_crop_data_with_mask_small/
     loader:
       batch_size: 1
-      shuffle: true
+      shuffle: false
       pin_memory: true
       num_workers: 16

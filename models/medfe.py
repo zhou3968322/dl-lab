@@ -41,10 +41,10 @@ class Medfe(BaseModel):
         self.mask_decoder = init_net(self.mask_decoder, **init_args)
         self.mask_decoder.reset_device(self.device0)
         model_names.append("mask_decoder")
-        user_inner_loss = arch_config.get("user_inner_loss", False)
+        use_inner_loss = arch_config.get("use_inner_loss", False)
         self.pc_block = getattr(getattr(networks, arch_config["pc_block"].pop("type")),
                                 arch_config["pc_block"].pop("name"))(**arch_config["pc_block"],
-                                                                     use_inner_loss=user_inner_loss)
+                                                                     use_inner_loss=use_inner_loss)
         self.use_inner_loss = self.pc_block.use_inner_loss
         self.use_fake_mask = arch_config.get("use_fake_mask", False)
         self.pc_block = init_net(self.pc_block, **init_args, gpu_ids=[1])
@@ -118,7 +118,7 @@ class Medfe(BaseModel):
         fake_p_1, fake_p_2, fake_p_3, fake_p_4, fake_p_5, fake_p_6 = self.encoder(self.input_a)
         De_in = [fake_p_1, fake_p_2, fake_p_3, fake_p_4, fake_p_5, fake_p_6]
         if self.has_mask_encoder:
-            fake_m_1, fake_m_2, fake_m_3, fake_m_4, fake_m_5, fake_m_6 = self.encoder(self.input_a)
+            fake_m_1, fake_m_2, fake_m_3, fake_m_4, fake_m_5, fake_m_6 = self.mask_encoder(self.input_a)
             self.fake_mask = self.mask_decoder(fake_m_1, fake_m_2, fake_m_3, fake_m_4, fake_m_5, fake_m_6)
         else:
             self.fake_mask = self.mask_decoder(fake_p_1, fake_p_2, fake_p_3, fake_p_4, fake_p_5, fake_p_6)
@@ -153,6 +153,8 @@ class Medfe(BaseModel):
         set_requires_grad(self.encoder, False)
         set_requires_grad(self.decoder, False)
         set_requires_grad(self.mask_decoder, False)
+        if self.has_mask_encoder:
+            set_requires_grad(self.mask_encoder, False)
         set_requires_grad(self.pc_block, False)
         self.optimizer_discriminator_mask.zero_grad()
         self.optimizer_discriminator_gt.zero_grad()
@@ -166,14 +168,20 @@ class Medfe(BaseModel):
         set_requires_grad(self.encoder, True)
         set_requires_grad(self.decoder, True)
         set_requires_grad(self.mask_decoder, True)
+        if self.has_mask_encoder:
+            set_requires_grad(self.mask_encoder, True)
         set_requires_grad(self.pc_block, True)
         self.optimizer_encoder.zero_grad()
         self.optimizer_decoder.zero_grad()
         self.optimizer_mask_decoder.zero_grad()
+        if self.has_mask_encoder:
+            self.optimizer_mask_encoder.zero_grad()
         self.pc_block.zero_grad()
         self.backward_generator()
         self.optimizer_pc_block.step()
         self.optimizer_mask_decoder.step()
+        if self.has_mask_encoder:
+            self.optimizer_mask_encoder.zero_grad()
         self.optimizer_decoder.step()
         self.optimizer_encoder.step()
 
@@ -272,7 +280,7 @@ class Medfe(BaseModel):
 
     def get_current_errors(self):
         # show the current loss
-        return OrderedDict([('G_GAN', self.loss_G_GAN.data),
+        data = OrderedDict([('G_GAN', self.loss_G_GAN.data),
                             ('G_GAN_mask', self.loss_G_GAN_mask.data),
                             ('D_Loss', self.loss_D.data),
                             ('D_mask_Loss', self.loss_D_mask.data),
@@ -281,3 +289,6 @@ class Medfe(BaseModel):
                             ('PerceptualLoss', self.perceptual_loss.data),
                             ('StyleLoss', self.style_loss.data)
                             ])
+        if self.use_inner_loss:
+            data.update({"feature_loss": self.feature_loss})
+        return data

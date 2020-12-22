@@ -1,33 +1,33 @@
-name: test_medfe
+name: medfe_test
 mode: train
 arch:
-  type: medfe_stde
+  type: medfe
   init_args:
     init_type: normal
     init_gain: 0.2
   encoder:
-    type: test_medfe
+    type: medfe
     name: Encoder
     input_nc: 3
     output_nc: 3
     ngf: 64
     use_dropout: false
   decoder:
-    type: test_medfe
+    type: medfe
     name: Decoder
     input_nc: 3
     output_nc: 3
     ngf: 64
     use_dropout: false
   mask_decoder:
-    type: test_medfe
+    type: medfe
     name: Decoder
     input_nc: 3
     output_nc: 1
     ngf: 64
     use_dropout: false
   pc_block:
-    type: test_pc_conv
+    type: pc_conv
     name: PCconv
   discriminator_gt:
     type: discriminator
@@ -35,14 +35,14 @@ arch:
     input_nc: 3
     ndf: 64
     n_layers: 3
-    use_sigmoid: false
+    use_sigmoid: true
   discriminator_mask:
     type: discriminator
     name: NLayerDiscriminator
     input_nc: 1
     ndf: 64
     n_layers: 3
-    use_sigmoid: false
+    use_sigmoid: true
 loss:
   lambdaP:  5
   lambdaS: 0.1
@@ -63,8 +63,8 @@ trainer:
   continue_train: false
   # continue_train的时候需要load epoch参数
 #  load_epoch: 0
-  display_freq: 1
-  print_freq: 1
+  display_freq: 10
+  print_freq: 10
   save_dir: "./checkpoints/medfe_test"
   log_dir: "./tensorboard/medfe_test"
 
@@ -76,6 +76,6 @@ datasets:
         data_root: /data_ssd/ocr/zhoubingcheng/gan_datasets/gan_aligned_crop_data_with_mask_small/
     loader:
       batch_size: 1
-      shuffle: true
+      shuffle: false
       pin_memory: true
-      num_workers: 0
+      num_workers: 8
