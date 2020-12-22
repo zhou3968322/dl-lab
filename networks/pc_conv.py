@@ -6,6 +6,89 @@ import torch.nn as nn
 import numpy as np
 from utils.dl_util import cal_feat_mask
 import torch.nn.functional as F
+import math
+from operators.self_patch import Selfpatch
+from operators.se_layer import SELayer
+
+
+def gussin(v, width=32):
+    outk = []
+    v = v
+    for i in range(width):
+        for k in range(width):
+
+            out = []
+            for x in range(width):
+                row = []
+                for y in range(width):
+                    cord_x = i
+                    cord_y = k
+                    dis_x = np.abs(x - cord_x)
+                    dis_y = np.abs(y - cord_y)
+                    dis_add = -(dis_x * dis_x + dis_y * dis_y)
+                    dis_add = dis_add / (2 * v * v)
+                    dis_add = math.exp(dis_add) / (2 * math.pi * v * v)
+
+                    row.append(dis_add)
+                out.append(row)
+
+            outk.append(out)
+
+    out = np.array(outk)
+    f = out.sum(-1).sum(-1)
+    q = []
+    for i in range(width * width):
+        g = out[i] / f[i]
+        q.append(g)
+    out = np.array(q)
+    return torch.from_numpy(out)
+
+
+class BASE(nn.Module):
+    def __init__(self, inner_nc):
+        super(BASE, self).__init__()
+        se = SELayer(inner_nc, 16)
+        model = [se]
+        gus = gussin(1.5).cuda()
+        self.gus = torch.unsqueeze(gus, 1).double()
+        self.model = nn.Sequential(*model)
+        self.down = nn.Sequential(
+            nn.Conv2d(1024, 512, 1, 1, 0, bias=False),
+            nn.InstanceNorm2d(512),
+            nn.LeakyReLU(negative_slope=0.2)
+        )
+
+    def forward(self, x):
+        Nonparm = Selfpatch()
+        out_32 = self.model(x)
+        b, c, h, w = out_32.size()
+        if self.gus.device != out_32.device:
+            self.gus = self.gus.to(out_32.device)
+
+        gus = self.gus.float()
+        gus_out = out_32[0].expand(h * w, c, h, w)
+        gus_out = gus * gus_out
+        gus_out = torch.sum(gus_out, -1)
+        gus_out = torch.sum(gus_out, -1)
+        gus_out = gus_out.contiguous().view(b, c, h, w)
+        csa2_in = F.sigmoid(out_32)
+        csa2_f = torch.nn.functional.pad(csa2_in, (1, 1, 1, 1))
+        csa2_ff = torch.nn.functional.pad(out_32, (1, 1, 1, 1))
+        csa2_fff, csa2_f, csa2_conv = Nonparm.buildAutoencoder(csa2_f[0], csa2_in[0], csa2_ff[0], 3, 1)
+        csa2_conv = csa2_conv.expand_as(csa2_f)
+        csa_a = csa2_conv * csa2_f
+        csa_a = torch.mean(csa_a, 1)
+        a_c, a_h, a_w = csa_a.size()
+        csa_a = csa_a.contiguous().view(a_c, -1)
+        csa_a = F.softmax(csa_a, dim=1)
+        csa_a = csa_a.contiguous().view(a_c, 1, a_h, a_h)
+        out = csa_a * csa2_fff
+        out = torch.sum(out, -1)
+        out = torch.sum(out, -1)
+        out_csa = out.contiguous().view(b, c, h, w)
+        out_32 = torch.cat([gus_out, out_csa], 1)
+        out_32 = self.down(out_32)
+        return out_32
 
 
 class PartialConv(nn.Module):
@@ -115,11 +198,9 @@ class ConvDown(nn.Module):
             nf_mult_prev = nf_mult
             if nums == 8:
                 if in_c == 512:
-
-                    nfmult = 1
+                    nf_mult = 1
                 else:
                     nf_mult = 2
-
             else:
                 nf_mult = min(2 ** i, 8)
             if kernel != 1:
@@ -186,15 +267,48 @@ class ConvUp(nn.Module):
         return out
 
 
+class InnerCos(nn.Module):
+    def __init__(self):
+        super(InnerCos, self).__init__()
+        self.criterion = nn.L1Loss()
+        self.target = None
+        self.down_model = nn.Sequential(
+            nn.Conv2d(256, 3, kernel_size=1,stride=1, padding=0),
+            nn.Tanh()
+        )
+
+    def set_target(self, input_gt):
+        self.structure_gt = F.interpolate(input_gt, size=(32, 32), mode='bilinear')
+
+    def get_target(self):
+        return self.target
+
+    def forward(self, x_structure_fi):
+        if self.training:
+            structure_fi = self.down_model(x_structure_fi)
+            self.loss = self.criterion(structure_fi, self.structure_gt)
+            return self.loss
+
+    def backward(self, retain_graph=True):
+        if self.training:
+            self.loss.backward(retain_graph=retain_graph)
+        return self.loss
+
+    def __repr__(self):
+
+        return self.__class__.__name__
+
+
 class PCconv(nn.Module):
-    def __init__(self, input_w=1024, nc=None, nw=None):
+    def __init__(self, input_w=1024, nc=None, nw=None,
+                 use_base=True, use_inner_loss=False):
         super(PCconv, self).__init__()
         # input_w mush be 2^k, 64设置为
         ni = 6
         if nc is None:
             nc = [64, 128, 256, 512, 512, 512]
         if nw is None:
-            nw = [512, 256, 128, 64, 32, 16]
+            nw = [512, 128, 32, 16, 8, 4]
         self.nc = nc
         self.nw = nw
         # 使用第三层作为mask信息的特征feature
@@ -205,8 +319,8 @@ class PCconv(nn.Module):
         self.activation = nn.LeakyReLU(negative_slope=0.2)
 
         # feature sample 层, 分为上采样和下采样
-        self.down_1 = ConvDown(nc[0], 2 * nc[0], 4, 2, padding=1, layers=int(np.log2(nw[0] / mask_w)))
-        self.down_2 = ConvDown(nc[1], 2 * nc[1], 4, 2, padding=1, layers=int(np.log2(nw[1] / mask_w)))
+        self.down_1 = ConvDown(nc[0], 2 * nc[0], 8, 4, padding=2, layers=2)
+        self.down_2 = ConvDown(nc[1], 2 * nc[1], 8, 4, padding=2, layers=1)
         self.down_3 = ConvDown(nc[2], nc[2], 1, 1)
         # 上采样层基本一致
         self.up = ConvUp(512, mask_c, 1, 1)
@@ -225,6 +339,10 @@ class PCconv(nn.Module):
         self.down_4 = ConvDown(2 * mask_c, 2 * mask_c, 4, 2, padding=1, layers=int(np.log2(mask_w / nw[3])))
         self.down_5 = ConvDown(2 * mask_c, 2 * mask_c, 4, 2, padding=1, layers=int(np.log2(mask_w / nw[4])))
         self.down_6 = ConvDown(2 * mask_c, 2 * mask_c, 4, 2, padding=1, layers=int(np.log2(mask_w / nw[5])))
+        self.use_base = use_base
+
+        if self.use_base:
+            self.base = BASE(512)  # 将feature equalization texture feature and structure feature
 
         # partial conv层
         seuqence_3 = []
@@ -239,22 +357,15 @@ class PCconv(nn.Module):
         self.cov_7 = nn.Sequential(*seuqence_7)
         self.device = torch.device("cuda:0")
 
+        self.use_inner_loss = use_inner_loss
+
     def reset_device(self, device):
         self.device = device
 
-    def forward(self, input, mask):
+    def get_features(self, input):
         for i in range(len(input)):
             if self.device != input[i].device:
                 input[i] = input[i].to(self.device)
-        if self.device != mask.device:
-            mask = mask.to(self.device)
-
-        mask = cal_feat_mask(mask, self.conv_feat_mask_layer_num, 1)
-        # input[2]:256 32 32
-        b, c, h, w = input[2].size()
-        mask_1 = torch.add(torch.neg(mask.float()), 1)
-        mask_1 = mask_1.expand(b, c, h, w)
-
         x_1 = self.activation(input[0])
         x_2 = self.activation(input[1])
         x_3 = self.activation(input[2])
@@ -277,6 +388,19 @@ class PCconv(nn.Module):
 
         x_texture = self.down(x_texture)
         x_structure = self.down(x_structure)
+        return x_texture, x_structure
+
+    def forward(self, input, mask):
+        if self.device != mask.device:
+            mask = mask.to(self.device)
+
+        mask = cal_feat_mask(mask, self.conv_feat_mask_layer_num, 1)
+        # input[2]:256 32 32
+        b, c, h, w = input[2].size()
+        mask_1 = torch.add(torch.neg(mask.float()), 1)
+        mask_1 = mask_1.expand(b, c, h, w)
+
+        x_texture, x_structure = self.get_features(input)
 
         # Multi Scale PConv fill the Details
         x_texture_3 = self.cov_3([x_texture, mask_1])
@@ -293,6 +417,8 @@ class PCconv(nn.Module):
         x_structure_fi = self.down(x_structure_fuse)
 
         x_cat_fuse = self.fuse(torch.cat([x_structure_fi, x_texture_fi], 1))
+        if self.use_base:
+            x_cat_fuse = self.base(x_cat_fuse)
 
         x_1 = self.up_1(x_cat_fuse, (self.nw[0], self.nw[0])) + input[0]
         x_2 = self.up_2(x_cat_fuse, (self.nw[1], self.nw[1])) + input[1]
@@ -302,4 +428,9 @@ class PCconv(nn.Module):
         x_6 = self.down_6(x_cat_fuse) + input[5]
 
         out = [x_1, x_2, x_3, x_4, x_5, x_6]
-        return out
+        if self.use_inner_loss:
+            loss = [x_texture_fi, x_structure_fi]
+            return out, loss
+        else:
+            return out
+

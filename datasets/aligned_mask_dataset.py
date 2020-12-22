@@ -12,7 +12,7 @@ import random
 from utils.img_util import convert_poly_to_rect
 
 
-def _handler_mask_data(mask_data, crop_size=65):
+def _handler_mask_data(mask_data, crop_size=256, image_width=1024, image_height=1024):
     # 从mask中随机抠出一个64x64的框
     mask_data = np.array(mask_data)
     crop_box = []
@@ -20,8 +20,15 @@ def _handler_mask_data(mask_data, crop_size=65):
         mask_rect = convert_poly_to_rect(mask_polys)
         mask_height = mask_rect[3] - mask_rect[1]
         mask_width = mask_rect[2] - mask_rect[0]
-        if mask_width >= crop_size:
-            xs = random.randint(0,mask_width - 64)
+        if mask_rect[2] >= image_width:
+            if image_width - mask_rect[0] > crop_size:
+                xs = random.randint(mask_rect[0], image_width - crop_size)
+                xe = xs + crop_size
+            else:
+                xs = image_width - crop_size
+                xe = xs + crop_size
+        elif mask_width >= crop_size:
+            xs = random.randint(0,mask_width - crop_size)
             xe = xs + crop_size
         elif mask_rect[2] >= crop_size:
             xs = mask_rect[2] - crop_size
@@ -29,7 +36,14 @@ def _handler_mask_data(mask_data, crop_size=65):
         else:
             xs = mask_rect[0]
             xe = mask_rect[0] + crop_size
-        if mask_height >= crop_size:
+        if mask_rect[3] >= image_height:
+            if image_height - mask_rect[1] > crop_size:
+                ys = random.randint(mask_rect[1], image_height - crop_size)
+                ye = ys + crop_size
+            else:
+                ys = image_height - crop_size
+                ye = ys + crop_size
+        elif mask_height >= crop_size:
             ys = random.randint(0,mask_height - crop_size)
             ye = ys + crop_size
         elif mask_rect[3] >= crop_size:
@@ -38,7 +52,8 @@ def _handler_mask_data(mask_data, crop_size=65):
         else:
             ys = mask_rect[1]
             ye = mask_rect[1] + crop_size
-        crop_box.append([xs, ys, xe, ye])
+        if 0 < xs < xe < image_width and 0 < ys < ye < image_height:
+            crop_box.append([xs, ys, xe, ye])
     return np.array(crop_box)
 
 
@@ -68,7 +83,6 @@ class AlignedMaskDataset(Dataset):
             mask_paths.append(mask_path)
             assert os.path.isfile(mask_path)
         self.mask_paths = mask_paths
-        random.seed(30)
 
     def __getitem__(self, index):
         """Return a data point and its metadata information.
@@ -91,15 +105,23 @@ class AlignedMaskDataset(Dataset):
         mask_path = self.mask_paths[index % self.dataset_len]
         with open(mask_path, "r") as fr:
             mask_data = json.loads(fr.read())
-        crop_box = random.choice(_handler_mask_data(mask_data))
-        x0, y0, x1, y1 = crop_box
+
         # split AB image into A and B
         w, h = AB.size
         w3 = int(w / 3)
         A = AB.crop((0, 0, w3, h))
+        # B = AB.crop((w3, 0, 2 * w3, h)).convert("L")
         B = AB.crop((w3, 0, 2 * w3, h))
-        mask = AB.crop((2 * w3, 0, w, h)).convert("L")
+        mask = AB.crop((2 * w3, 0, w, h))
+        mask, g, b = mask.split()
 
+        crop_boxes = _handler_mask_data(mask_data)
+        if len(crop_boxes) > 0:
+            crop_box = random.choice(crop_boxes)
+        else:
+            xs = random.randint(0, w3 - 256)
+            ys = random.randint(0, h - 256)
+            crop_box = np.array([xs, ys, xs + 256, ys + 256])
         current_transform = default_transform()
         gray_transform = default_transform(grayscale=True)
 
@@ -110,9 +132,10 @@ class AlignedMaskDataset(Dataset):
         # 到后期训练的时候需要将mask在input中填充（这是为了捕捉到更多结构信息，而非颜色信息）
         # 网路需要学到颜色信息。
         # normalize 防止如果包含resize的情况, 插值的问题
-        noise_mask[noise_mask >= -0.2] = 1.0
-        noise_mask[noise_mask < 0.2] = -1.0
-        return {'A': A, 'B': B, "noise_mask": noise_mask}
+        # noise_mask[noise_mask >= -0.2] = 1.0
+        # noise_mask[noise_mask < 0.2] = -1.0
+        return {'A': A, 'B': B, "noise_mask": noise_mask, "crop_box": torch.tensor(crop_box),
+                "AB_path": AB_path}
 
     def __len__(self):
         """Return the total number of images in the dataset."""

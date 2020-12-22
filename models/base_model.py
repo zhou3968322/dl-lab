@@ -15,6 +15,10 @@ class BaseModel(object):
         self.continue_train = False
         self.gpu_ids = get_gpu_ids(config["arch"]["init_args"].get("gpu_ids", "0"))
         self.device = torch.device("cuda") if len(self.gpu_ids) > 0 else torch.device("cpu")
+        self.random_seed = config.get("random_seed", 30)
+        torch.manual_seed(self.random_seed)
+        if self.device.type == "cuda":
+            torch.cuda.manual_seed(self.random_seed)
         if self.mode == "train":
             self.save_dir = config["trainer"].pop("save_dir")
             os.makedirs(self.save_dir, exist_ok=True)
@@ -43,10 +47,12 @@ class BaseModel(object):
                 save_path = os.path.join(self.save_dir, save_filename).replace('\\', '/')
                 net = getattr(self, name)
                 optimize = getattr(self, 'optimizer_' + name)
-
                 if torch.cuda.is_available():
-                    torch.save({'net': net.module.cpu().state_dict(), 'optimize': optimize.state_dict()}, save_path)
-                    net.cuda()
+                    if isinstance(net, torch.nn.DataParallel):
+
+                        torch.save({'net': net.module.state_dict(), 'optimize': optimize.state_dict()}, save_path)
+                    else:
+                        torch.save({'net': net.state_dict(), 'optimize': optimize.state_dict()}, save_path)
                 else:
                     torch.save(net.cpu().state_dict(), save_path)
 

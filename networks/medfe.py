@@ -3,6 +3,7 @@
 # create: 2020/12/14
 import torch
 import torch.nn as nn
+import functools
 
 
 # Define the resnet block
@@ -26,11 +27,15 @@ class ResnetBlock(nn.Module):
 
 # define the Encoder unit
 class UnetSkipConnectionEBlock(nn.Module):
-    def __init__(self, outer_nc, inner_nc, outermost=False, innermost=False, norm_layer=nn.BatchNorm2d,
+    def __init__(self, outer_nc, inner_nc, kernel_size=4, outermost=False, innermost=False, norm_layer=nn.BatchNorm2d,
                  use_dropout=False):
         super(UnetSkipConnectionEBlock, self).__init__()
-        downconv = nn.Conv2d(outer_nc, inner_nc, kernel_size=4,
-                             stride=2, padding=1)
+        if kernel_size == 4:
+            downconv = nn.Conv2d(outer_nc, inner_nc, kernel_size=4,
+                                 stride=2, padding=1)
+        else:
+            downconv = nn.Conv2d(outer_nc, inner_nc, kernel_size=8,
+                                 stride=4, padding=2)
 
         downrelu = nn.LeakyReLU(0.2, True)
 
@@ -53,17 +58,52 @@ class UnetSkipConnectionEBlock(nn.Module):
         return self.model(x)
 
 
+class UnetSkipConnectionDBlock(nn.Module):
+    def __init__(self, inner_nc, outer_nc, kernel_size=4, outermost=False, innermost=False, norm_layer=nn.BatchNorm2d,
+                 use_dropout=False):
+        super(UnetSkipConnectionDBlock, self).__init__()
+        uprelu = nn.ReLU(True)
+        upnorm = norm_layer(outer_nc, affine=True)
+        if kernel_size == 8:
+            upconv = nn.ConvTranspose2d(inner_nc, outer_nc,
+                                        kernel_size=8, stride=4,
+                                        padding=2)
+        else:
+            upconv = nn.ConvTranspose2d(inner_nc, outer_nc,
+                                        kernel_size=4, stride=2,
+                                        padding=1)
+
+        if outermost:
+            up = [uprelu, upconv, nn.Tanh()]
+            model = up
+        elif innermost:
+            up = [uprelu, upconv, upnorm]
+            model = up
+        else:
+            up = [uprelu, upconv, upnorm]
+            model = up
+
+        self.model = nn.Sequential(*model)
+
+    def forward(self, x):
+        return self.model(x)
+
+
 class Encoder(nn.Module):
     def __init__(self, input_nc, output_nc, ngf=64, res_num=4, norm_layer=nn.BatchNorm2d, use_dropout=False):
         super(Encoder, self).__init__()
 
         # construct unet structure
-        Encoder_1 = UnetSkipConnectionEBlock(input_nc, ngf, norm_layer=norm_layer, use_dropout=use_dropout, outermost=True)
-        Encoder_2 = UnetSkipConnectionEBlock(ngf, ngf * 2, norm_layer=norm_layer, use_dropout=use_dropout)
-        Encoder_3 = UnetSkipConnectionEBlock(ngf * 2, ngf * 4, norm_layer=norm_layer, use_dropout=use_dropout)
+        Encoder_1 = UnetSkipConnectionEBlock(input_nc, ngf, norm_layer=norm_layer, use_dropout=use_dropout,
+                                             outermost=True)
+        Encoder_2 = UnetSkipConnectionEBlock(ngf, ngf * 2, kernel_size=8, norm_layer=norm_layer,
+                                             use_dropout=use_dropout)
+        Encoder_3 = UnetSkipConnectionEBlock(ngf * 2, ngf * 4, kernel_size=8, norm_layer=norm_layer,
+                                             use_dropout=use_dropout)
         Encoder_4 = UnetSkipConnectionEBlock(ngf * 4, ngf * 8, norm_layer=norm_layer, use_dropout=use_dropout)
         Encoder_5 = UnetSkipConnectionEBlock(ngf * 8, ngf * 8, norm_layer=norm_layer, use_dropout=use_dropout)
-        Encoder_6 = UnetSkipConnectionEBlock(ngf * 8, ngf * 8, norm_layer=norm_layer, use_dropout=use_dropout, innermost=True)
+        Encoder_6 = UnetSkipConnectionEBlock(ngf * 8, ngf * 8, norm_layer=norm_layer, use_dropout=use_dropout,
+                                             innermost=True)
 
         blocks = []
         for _ in range(res_num):
@@ -83,7 +123,6 @@ class Encoder(nn.Module):
     def reset_device(self, device):
         self.device = device
 
-
     def forward(self, input):
         if self.device != input.device:
             input = input.to(self.device)
@@ -98,33 +137,6 @@ class Encoder(nn.Module):
         return y_1, y_2, y_3, y_4, y_5, y_7
 
 
-class UnetSkipConnectionDBlock(nn.Module):
-    def __init__(self, inner_nc, outer_nc, outermost=False, innermost=False, norm_layer=nn.BatchNorm2d,
-                 use_dropout=False):
-        super(UnetSkipConnectionDBlock, self).__init__()
-        uprelu = nn.ReLU(True)
-        upnorm = norm_layer(outer_nc, affine=True)
-        upconv = nn.ConvTranspose2d(inner_nc, outer_nc,
-                                    kernel_size=4, stride=2,
-                                    padding=1)
-
-        if outermost:
-            up = [uprelu, upconv, nn.Tanh()]
-            model = up
-        elif innermost:
-            up = [uprelu, upconv, upnorm]
-            model = up
-        else:
-            up = [uprelu, upconv, upnorm]
-            model = up
-
-        self.model = nn.Sequential(*model)
-
-
-    def forward(self, x):
-        return self.model(x)
-
-
 class Decoder(nn.Module):
     def __init__(self, input_nc, output_nc, ngf=64,
                  norm_layer=nn.BatchNorm2d, use_dropout=False):
@@ -135,9 +147,10 @@ class Decoder(nn.Module):
                                              innermost=True)
         Decoder_2 = UnetSkipConnectionDBlock(ngf * 16, ngf * 8, norm_layer=norm_layer, use_dropout=use_dropout)
         Decoder_3 = UnetSkipConnectionDBlock(ngf * 16, ngf * 4, norm_layer=norm_layer, use_dropout=use_dropout)
-        Decoder_4 = UnetSkipConnectionDBlock(ngf * 8, ngf * 2, norm_layer=norm_layer, use_dropout=use_dropout)
-        Decoder_5 = UnetSkipConnectionDBlock(ngf * 4, ngf, norm_layer=norm_layer, use_dropout=use_dropout)
-        Decoder_6 = UnetSkipConnectionDBlock(ngf * 2, output_nc, norm_layer=norm_layer, use_dropout=use_dropout, outermost=True)
+        Decoder_4 = UnetSkipConnectionDBlock(ngf * 8, ngf * 2, kernel_size=8, norm_layer=norm_layer, use_dropout=use_dropout)
+        Decoder_5 = UnetSkipConnectionDBlock(ngf * 4, ngf, kernel_size=8, norm_layer=norm_layer, use_dropout=use_dropout)
+        Decoder_6 = UnetSkipConnectionDBlock(ngf * 2, output_nc, norm_layer=norm_layer, use_dropout=use_dropout,
+                                             outermost=True)
 
         self.Decoder_1 = Decoder_1
         self.Decoder_2 = Decoder_2

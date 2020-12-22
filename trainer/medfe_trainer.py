@@ -13,6 +13,7 @@ class MedfeTrainer(object):
 
     def __init__(self, config):
         self.experiment_name = config.pop('name')
+        self.random_seed = config.get('random_seed', 30)
 
         self.start_epoch = config["trainer"]["scheduler"]["start_epoch"]
         self.niter = config["trainer"]["scheduler"]["niter"]
@@ -61,7 +62,9 @@ class MedfeTrainer(object):
             if self.global_step % self.display_freq == 0:
                 visual_input = self.model.get_current_visuals()
                 grid = torchvision.utils.make_grid(list(visual_input), nrow=3)
-                self.writer.add_image('epoch_{}_step_{}'.format(epoch, self.global_step), grid, self.global_step)
+                img_name = self.model.img_name
+                self.writer.add_image('epoch_{}_step_{}_img_name_{}'.format(epoch, self.global_step, img_name), grid,
+                                      self.global_step)
             if self.save_epoch_freq == 0 and self.save_step_freq > 0 and self.global_step % self.save_step_freq == 0:
                 logger.info('saving the model epoch:{}, step:{}'.format(epoch, self.global_step))
                 self.model.save_networks(epoch)

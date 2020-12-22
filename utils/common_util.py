@@ -4,7 +4,11 @@
 
 
 def get_model_name(name):
-    return "{}{}".format(name[0].upper(), name[1:])
+    name_list = name.split('_')
+    class_name = ""
+    for name in name_list:
+        class_name += "{}{}".format(name[0].upper(), name[1:])
+    return class_name
 
 
 def get_trainer_name(name):

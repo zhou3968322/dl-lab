@@ -1,33 +1,40 @@
 name: test_medfe
 mode: train
 arch:
-  type: medfe_stde
+  type: medfe
   init_args:
     init_type: normal
     init_gain: 0.2
   encoder:
-    type: test_medfe
+    type: medfe
     name: Encoder
     input_nc: 3
     output_nc: 3
     ngf: 64
     use_dropout: false
   decoder:
-    type: test_medfe
+    type: medfe
     name: Decoder
     input_nc: 3
     output_nc: 3
     ngf: 64
     use_dropout: false
+  mask_encoder:
+    type: medfe
+    name: Encoder
+    input_nc: 1
+    output_nc: 1
+    ngf: 64
+    use_dropout: false
   mask_decoder:
-    type: test_medfe
+    type: medfe
     name: Decoder
-    input_nc: 3
+    input_nc: 1
     output_nc: 1
     ngf: 64
     use_dropout: false
   pc_block:
-    type: test_pc_conv
+    type: pc_conv
     name: PCconv
   discriminator_gt:
     type: discriminator
@@ -63,10 +70,10 @@ trainer:
   continue_train: false
   # continue_train的时候需要load epoch参数
 #  load_epoch: 0
-  display_freq: 1
-  print_freq: 1
-  save_dir: "./checkpoints/medfe_test"
-  log_dir: "./tensorboard/medfe_test"
+  display_freq: 40
+  print_freq: 40
+  save_dir: "./checkpoints/medfe_together"
+  log_dir: "./tensorboard/medfe_together"
 
 datasets:
   train:
@@ -78,4 +85,4 @@ datasets:
       batch_size: 1
       shuffle: true
       pin_memory: true
-      num_workers: 0
+      num_workers: 16
