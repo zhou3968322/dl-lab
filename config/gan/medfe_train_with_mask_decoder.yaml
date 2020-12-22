@@ -1,7 +1,8 @@
-name: test_medfe
+name: medfe_with_mask_decoder
 mode: train
 arch:
   type: medfe
+  has_mask_encoder: true
   init_args:
     init_type: normal
     init_gain: 0.2
@@ -72,8 +73,8 @@ trainer:
 #  load_epoch: 0
   display_freq: 40
   print_freq: 40
-  save_dir: "./checkpoints/medfe_together"
-  log_dir: "./tensorboard/medfe_together"
+  save_dir: "./checkpoints/medfe_with_mask_decoder"
+  log_dir: "./tensorboard/medfe_with_mask_decoder"
 
 datasets:
   train:

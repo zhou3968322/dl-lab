@@ -1,4 +1,4 @@
-name: test_medfe
+name: medfe
 mode: train
 arch:
   type: medfe
@@ -6,28 +6,28 @@ arch:
     init_type: normal
     init_gain: 0.2
   encoder:
-    type: test_medfe
+    type: medfe
     name: Encoder
     input_nc: 3
     output_nc: 3
     ngf: 64
     use_dropout: false
   decoder:
-    type: test_medfe
+    type: medfe
     name: Decoder
     input_nc: 3
     output_nc: 3
     ngf: 64
     use_dropout: false
   mask_decoder:
-    type: test_medfe
+    type: medfe
     name: Decoder
     input_nc: 3
     output_nc: 1
     ngf: 64
     use_dropout: false
   pc_block:
-    type: test_pc_conv
+    type: pc_conv
     name: PCconv
   discriminator_gt:
     type: discriminator
@@ -44,14 +44,14 @@ arch:
     n_layers: 3
     use_sigmoid: false
 loss:
-  lambdaP:  10
+  lambdaP:  5
   lambdaS: 0.1
-  lambdaL1: 100
-  lambdaGan: 5
+  lambdaL1: 50
+  lambdaGan: 10
 trainer:
   optimizer:
     optimizer_type: "adam"
-    lr: 0.0004
+    lr: 0.0002
     beta1: 0.5
   scheduler:
     lr_policy: lambda

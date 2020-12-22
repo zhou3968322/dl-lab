@@ -1,4 +1,4 @@
-name: test_medfe
+name: medfe_lr
 mode: train
 arch:
   type: medfe
@@ -44,14 +44,14 @@ arch:
     n_layers: 3
     use_sigmoid: false
 loss:
-  lambdaP:  1
+  lambdaP:  5
   lambdaS: 0.1
-  lambdaL1: 10
-  lambdaGan: 2
+  lambdaL1: 50
+  lambdaGan: 10
 trainer:
   optimizer:
     optimizer_type: "adam"
-    lr: 0.001
+    lr: 0.0004
     beta1: 0.5
   scheduler:
     lr_policy: lambda

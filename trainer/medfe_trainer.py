@@ -54,7 +54,8 @@ class MedfeTrainer(object):
             if self.global_step % self.print_freq == 0:
                 errors = self.model.get_current_errors()
                 t_comp = time.time() - iter_start_time
-                message = '(epoch: %d, steps: %d, time: %.3f) ' % (epoch, self.global_step, t_comp)
+                message = 'experiment:%s, (epoch: %d, steps: %d, time: %.3f) ' % (self.experiment_name, epoch,
+                                                                                  self.global_step, t_comp)
                 for key, value in errors.items():
                     message += '%s: %.5f ' % (key, value)
                     self.writer.add_scalar(key, errors[key], self.global_step)
@@ -63,7 +64,8 @@ class MedfeTrainer(object):
                 visual_input = self.model.get_current_visuals()
                 grid = torchvision.utils.make_grid(list(visual_input), nrow=3)
                 img_name = self.model.img_name
-                self.writer.add_image('epoch_{}_step_{}_img_name_{}'.format(epoch, self.global_step, img_name), grid,
+                self.writer.add_image('experiment_{}_epoch_{}_step_{}_img_name_{}'.
+                                      format(self.experiment_name, epoch, self.global_step, img_name), grid,
                                       self.global_step)
             if self.save_epoch_freq == 0 and self.save_step_freq > 0 and self.global_step % self.save_step_freq == 0:
                 logger.info('saving the model epoch:{}, step:{}'.format(epoch, self.global_step))
