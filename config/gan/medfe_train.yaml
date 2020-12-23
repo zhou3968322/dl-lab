@@ -58,13 +58,13 @@ trainer:
   scheduler:
     lr_policy: lambda
     # lamdata |setp |plateau |cosine
-    start_epoch: 1
+    start_epoch: 3
     niter: 20
     niter_decay: 100
   save_epoch_freq: 1
-  continue_train: false
+  continue_train: true
   # continue_train的时候需要load epoch参数
-#  load_epoch: 0
+  load_epoch: 2
   display_freq: 40
   print_freq: 40
   save_dir: "./checkpoints/medfe"

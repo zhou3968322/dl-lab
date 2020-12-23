@@ -30,7 +30,7 @@ class BaseModel(object):
                 load_filename = '{}_net_epoch{}.pth'.format(name, which_epoch)
                 load_path = os.path.join(self.save_dir, load_filename)
 
-                net = getattr(self, 'net' + name)
+                net = getattr(self, name)
                 optimize = getattr(self, 'optimizer_' + name)
                 if isinstance(net, torch.nn.DataParallel):
                     net = net.module

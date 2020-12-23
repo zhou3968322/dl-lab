@@ -74,7 +74,7 @@ class AlignedMaskDataset(Dataset):
         self.dir_AB = os.path.join(data_root, phase)  # get the image directory
         mask_dir = os.path.join(data_root, "mask")
         self.AB_paths = sorted(make_dataset(self.dir_AB, max_dataset_size))  # get image paths
-        random.shuffle(self.AB_paths)
+        # random.shuffle(self.AB_paths)
         self.dataset_len = len(self.AB_paths)
         mask_paths = []
         for ab_path in self.AB_paths:
