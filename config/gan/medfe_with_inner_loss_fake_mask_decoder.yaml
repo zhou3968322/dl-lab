@@ -1,8 +1,10 @@
-name: medfe_inner_loss
+name: medfe_inner_loss_fake_mask_decoder
 mode: train
 arch:
   type: medfe
   use_inner_loss: true
+  has_mask_encoder: true
+  use_fake_mask: true
   init_args:
     init_type: normal
     init_gain: 0.2
@@ -20,10 +22,17 @@ arch:
     output_nc: 3
     ngf: 64
     use_dropout: false
+  mask_encoder:
+    type: medfe
+    name: Encoder
+    input_nc: 3
+    output_nc: 1
+    ngf: 64
+    use_dropout: false
   mask_decoder:
     type: medfe
     name: Decoder
-    input_nc: 3
+    input_nc: 1
     output_nc: 1
     ngf: 64
     use_dropout: false
@@ -36,7 +45,7 @@ arch:
     input_nc: 3
     ndf: 64
     n_layers: 3
-    use_spectral: false
+    use_spectral: true
     use_sigmoid: false
   discriminator_mask:
     type: discriminator
@@ -44,7 +53,7 @@ arch:
     input_nc: 1
     ndf: 64
     n_layers: 3
-    use_spectral: false
+    use_spectral: true
     use_sigmoid: false
 loss:
   lambdaP:  5
@@ -60,16 +69,16 @@ trainer:
     lr_policy: lambda
     # lamdata |setp |plateau |cosine
     start_epoch: 1
-    niter: 20
-    niter_decay: 100
+    niter: 10
+    niter_decay: 20
   save_epoch_freq: 1
   continue_train: false
   # continue_train的时候需要load epoch参数
 #  load_epoch: 0
   display_freq: 40
-  print_freq: 80
-  save_dir: "./checkpoints/medfe_inner_loss"
-  log_dir: "./tensorboard/medfe_inner_loss"
+  print_freq: 40
+  save_dir: "./checkpoints/medfe_inner_loss_fake_mask_decoder"
+  log_dir: "./tensorboard/medfe_inner_loss_fake_mask_decoder"
 
 datasets:
   train:
@@ -81,4 +90,4 @@ datasets:
       batch_size: 1
       shuffle: false
       pin_memory: true
-      num_workers: 0
+      num_workers: 16

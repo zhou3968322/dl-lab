@@ -23,6 +23,8 @@ class BaseModel(object):
             self.save_dir = config["trainer"].pop("save_dir")
             os.makedirs(self.save_dir, exist_ok=True)
             self.continue_train = config["trainer"].pop("continue_train")
+        elif self.mode == "predict":
+            self.save_dir = config["predictor"].pop("model_dir")
 
     def load_networks(self, which_epoch):
         for name in self.model_names:
@@ -31,14 +33,16 @@ class BaseModel(object):
                 load_path = os.path.join(self.save_dir, load_filename)
 
                 net = getattr(self, name)
-                optimize = getattr(self, 'optimizer_' + name)
                 if isinstance(net, torch.nn.DataParallel):
                     net = net.module
                 # if you are using PyTorch newer than 0.4 (e.g., built from
                 # GitHub source), you can remove str() on self.device
                 state_dict = torch.load(load_path.replace('\\', '/'), map_location=str(self.device))
-                optimize.load_state_dict(state_dict['optimize'])
+                if self.mode == "train":
+                    optimize = getattr(self, 'optimizer_' + name)
+                    optimize.load_state_dict(state_dict['optimize'])
                 net.load_state_dict(state_dict['net'])
+                logger.info("load model_name:{} success".format(name))
 
     def save_networks(self, which_epoch):
         for name in self.model_names:

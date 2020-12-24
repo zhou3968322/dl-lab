@@ -2,7 +2,6 @@ name: medfe_mask_decoder
 mode: train
 arch:
   type: medfe
-  use_fake_mask: true
   has_mask_encoder: true
   init_args:
     init_type: normal
@@ -44,7 +43,8 @@ arch:
     input_nc: 3
     ndf: 64
     n_layers: 3
-    use_spectral: false
+    # false false tried, true true tried
+    use_spectral: true
     use_sigmoid: false
   discriminator_mask:
     type: discriminator
@@ -52,13 +52,13 @@ arch:
     input_nc: 1
     ndf: 64
     n_layers: 3
-    use_spectral: false
+    use_spectral: true
     use_sigmoid: false
 loss:
-  lambdaP:  5
+  lambdaP:  1
   lambdaS: 0.1
-  lambdaL1: 50
-  lambdaGan: 10
+  lambdaL1: 20
+  lambdaGan: 5
 trainer:
   optimizer:
     optimizer_type: "adam"

@@ -44,7 +44,7 @@ arch:
     input_nc: 3
     ndf: 64
     n_layers: 3
-    use_spectral: false
+    use_spectral: true
     use_sigmoid: false
   discriminator_mask:
     type: discriminator
@@ -52,7 +52,7 @@ arch:
     input_nc: 1
     ndf: 64
     n_layers: 3
-    use_spectral: false
+    use_spectral: true
     use_sigmoid: false
 loss:
   lambdaP:  5
@@ -68,8 +68,8 @@ trainer:
     lr_policy: lambda
     # lamdata |setp |plateau |cosine
     start_epoch: 1
-    niter: 20
-    niter_decay: 100
+    niter: 10
+    niter_decay: 20
   save_epoch_freq: 1
   continue_train: false
   # continue_train的时候需要load epoch参数
@@ -84,7 +84,7 @@ datasets:
     dataset:
       type: AlignedMaskDataset
       args:
-        data_root: /data_ssd/ocr/zhoubingcheng/gan_datasets/gan_aligned_crop_data_with_mask_small/
+        data_root: /data_ssd/ocr/zhoubingcheng/gan_datasets/gan_aligned_crop_data_with_mask_big/
     loader:
       batch_size: 1
       shuffle: false

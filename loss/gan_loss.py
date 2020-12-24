@@ -141,6 +141,11 @@ class StyleLoss(nn.Module):
             self.vgg = vgg_module
         self.criterion = torch.nn.L1Loss()
 
+        self.device = torch.device("cuda:0")
+
+    def reset_device(self, device):
+        self.device = device
+
     def compute_gram(self, x):
         b, ch, h, w = x.size()
         f = x.view(b, ch, w * h)
@@ -150,6 +155,10 @@ class StyleLoss(nn.Module):
 
     def __call__(self, x, y):
         # Compute features
+        if x.device != self.device:
+            x = x.to(self.device)
+        if y.device != self.device:
+            y = y.to(self.device)
         x_vgg, y_vgg = self.vgg(x), self.vgg(y)
 
         # Compute loss
@@ -177,9 +186,17 @@ class PerceptualLoss(nn.Module):
             self.vgg = vgg_module
         self.criterion = torch.nn.L1Loss()
         self.weights = weights
+        self.device = torch.device("cuda:0")
+
+    def reset_device(self, device):
+        self.device = device
 
     def __call__(self, x, y):
         # Compute features
+        if x.device != self.device:
+            x = x.to(self.device)
+        if y.device != self.device:
+            y = y.to(self.device)
         x_vgg, y_vgg = self.vgg(x), self.vgg(y)
 
         content_loss = 0.0
@@ -228,6 +245,9 @@ class GANLoss(nn.Module):
             errG = (torch.mean((y_pred - torch.mean(y_pred_fake) + target_tensor) ** 2) + torch.mean(
                 (y_pred_fake - torch.mean(y_pred) - target_tensor) ** 2)) / 2
             return errG
+
+
+class ConditonalGan
 
 # class DESTLOSS(nn.Module):
 #     def __init__(self):

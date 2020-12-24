@@ -9,6 +9,9 @@ from loss.gan_loss import VGG16, PerceptualLoss, StyleLoss, GANLoss
 from utils.dl_util import get_scheduler, get_optimizer, set_requires_grad, tensor2im
 from models.base_model import BaseModel
 from collections import OrderedDict
+from utils.log import logger
+import numpy as np
+from datasets.transforms import default_transform
 
 
 class Medfe(BaseModel):
@@ -32,7 +35,8 @@ class Medfe(BaseModel):
             self.has_mask_encoder = True
             self.mask_encoder = getattr(getattr(networks, arch_config["mask_encoder"].pop("type")),
                                         arch_config["mask_encoder"].pop("name"))(**arch_config["mask_encoder"])
-            self.mask_encoder = init_net(self.mask_encoder, **init_args)
+            self.mask_encoder = init_net(self.mask_encoder, **init_args, gpu_ids=[1])
+            self.mask_encoder.reset_device(self.device1)
             model_names.append("mask_encoder")
         else:
             self.has_mask_encoder = False
@@ -61,7 +65,8 @@ class Medfe(BaseModel):
                 **arch_config["discriminator_mask"])
             self.discriminator_mask = init_net(self.discriminator_mask, **init_args)
             model_names.append("discriminator_mask")
-
+        self.retain_g_graph = self.use_fake_mask or not self.has_mask_encoder
+        logger.info("retrain g graph:{}".format(self.retain_g_graph))
         self.model_names = model_names
 
         if self.mode == "train":
@@ -105,6 +110,9 @@ class Medfe(BaseModel):
 
         if self.mode == "train" and self.continue_train:
             load_epoch = config["trainer"]["load_epoch"]
+            self.load_networks(load_epoch)
+        elif self.mode == "predict":
+            load_epoch = config["predictor"]["load_epoch"]
             self.load_networks(load_epoch)
         self.print_networks()
 
@@ -185,6 +193,39 @@ class Medfe(BaseModel):
         self.optimizer_decoder.step()
         self.optimizer_encoder.step()
 
+    @torch.no_grad()
+    def inference(self, image):
+        image_tensor = torch.unsqueeze(image.to(self.device0), dim=0)
+        fake_p_1, fake_p_2, fake_p_3, fake_p_4, fake_p_5, fake_p_6 = self.encoder(image_tensor)
+        De_in = [fake_p_1, fake_p_2, fake_p_3, fake_p_4, fake_p_5, fake_p_6]
+        if self.has_mask_encoder:
+            fake_m_1, fake_m_2, fake_m_3, fake_m_4, fake_m_5, fake_m_6 = self.mask_encoder(image_tensor)
+            fake_mask = self.mask_decoder(fake_m_1, fake_m_2, fake_m_3, fake_m_4, fake_m_5, fake_m_6)
+        else:
+            fake_mask = self.mask_decoder(fake_p_1, fake_p_2, fake_p_3, fake_p_4, fake_p_5, fake_p_6)
+        if self.use_inner_loss:
+            x_out, loss = self.pc_block(De_in, fake_mask)
+        else:
+            x_out = self.pc_block(De_in, fake_mask)
+        fake_out = self.decoder(x_out[0], x_out[1], x_out[2], x_out[3], x_out[4], x_out[5])
+        return fake_mask, fake_out
+
+    def set_mode(self):
+        if self.mode == "eval":
+            self.decoder.eval()
+            self.encoder.eval()
+            self.mask_decoder.eval()
+            if self.has_mask_encoder:
+                self.mask_encoder.eval()
+            self.pc_block.eval()
+        else:
+            self.decoder.train()
+            self.encoder.train()
+            self.mask_decoder.train()
+            if self.has_mask_encoder:
+                self.mask_encoder.train()
+            self.pc_block.train()
+
     def backward_generator(self):
         # First, The generator should fake the discriminator
         # fake_local = self.fake_out[:, :, self.crop_x:self.crop_x + 64, self.crop_y:self.crop_y + 64]
@@ -196,44 +237,48 @@ class Medfe(BaseModel):
         pred_fake_mask = self.discriminator_mask(self.fake_mask.detach())
 
         # Local discriminator
-        input_a_local = self.input_a[:, :, self.crop_box[0]: self.crop_box[2], self.crop_box[1]: self.crop_box[3]]
-        input_b_local = self.input_b[:, :, self.crop_box[0]: self.crop_box[2], self.crop_box[1]: self.crop_box[3]]
-        fake_out_local = self.fake_out[:, :, self.crop_box[0]: self.crop_box[2],
-                         self.crop_box[1]: self.crop_box[3]].detach()
-        noise_mask_local = self.noise_mask[:, :, self.crop_box[0]: self.crop_box[2], self.crop_box[1]: self.crop_box[3]]
-        fake_mask_local = self.fake_mask[:, :, self.crop_box[0]: self.crop_box[2],
-                          self.crop_box[1]: self.crop_box[3]].detach()
-
-        pred_real_local = self.discriminator_gt(input_a_local)
-        pred_fake_local = self.discriminator_gt(fake_out_local)
-        pred_real_mask_local = self.discriminator_mask(noise_mask_local)
-        pred_fake_mask_local = self.discriminator_mask(fake_mask_local)
+        # input_a_local = self.input_a[:, :, self.crop_box[0]: self.crop_box[2], self.crop_box[1]: self.crop_box[3]]
+        # input_b_local = self.input_b[:, :, self.crop_box[0]: self.crop_box[2], self.crop_box[1]: self.crop_box[3]]
+        # fake_out_local = self.fake_out[:, :, self.crop_box[0]: self.crop_box[2],
+        #                  self.crop_box[1]: self.crop_box[3]].detach()
+        # noise_mask_local = self.noise_mask[:, :, self.crop_box[0]: self.crop_box[2], self.crop_box[1]: self.crop_box[3]]
+        # fake_mask_local = self.fake_mask[:, :, self.crop_box[0]: self.crop_box[2],
+        #                   self.crop_box[1]: self.crop_box[3]].detach()
+        #
+        # pred_real_local = self.discriminator_gt(input_a_local)
+        # pred_fake_local = self.discriminator_gt(fake_out_local)
+        # pred_real_mask_local = self.discriminator_mask(noise_mask_local)
+        # pred_fake_mask_local = self.discriminator_mask(fake_mask_local)
 
         # whole image loss
         if self.use_inner_loss:
             self.feature_loss = self.criterionL1(self.x_texture_fi, self.x_structure_fi) + \
                                 self.criterionL1(self.x_structure_fi, self.x_structure_gt)
-        self.loss_G_GAN = self.criterionGAN(pred_fake, pred_real, False) + \
-                          self.criterionGAN(pred_fake_local, pred_real_local, False)
-        self.loss_l1 = self.criterionL1(self.fake_out, self.input_b) + \
-                       self.criterionL1(fake_out_local, input_b_local)
+        self.loss_G_GAN = self.criterionGAN(pred_fake, pred_real, False)
+        # self.loss_G_GAN = self.criterionGAN(pred_fake, pred_real, False) + \
+        #                   self.criterionGAN(pred_fake_local, pred_real_local, False)
+        self.loss_l1 = self.criterionL1(self.fake_out, self.input_b)
+        # self.loss_l1 = self.criterionL1(self.fake_out, self.input_b) + \
+        #                self.criterionL1(fake_out_local, input_b_local)
         self.perceptual_loss = self.PerceptualLoss(self.fake_out, self.input_b)
         self.style_loss = self.StyleLoss(self.fake_out, self.input_b)
 
-        self.loss_G_GAN_mask = self.criterionGAN(pred_fake_mask, pred_real_mask, False) + \
-                               self.criterionGAN(pred_fake_mask_local, pred_real_mask_local, False)
-        self.loss_l1_mask = self.criterionL1(self.fake_mask, self.noise_mask) + \
-                            self.criterionL1(fake_mask_local, noise_mask_local)
+        self.loss_G_GAN_mask = self.criterionGAN(pred_fake_mask, pred_real_mask, False)
+        # self.loss_G_GAN_mask = self.criterionGAN(pred_fake_mask, pred_real_mask, False) + \
+        #                        self.criterionGAN(pred_fake_mask_local, pred_real_mask_local, False)
+        self.loss_l1_mask = self.criterionL1(self.fake_mask, self.noise_mask)
+        # self.loss_l1_mask = self.criterionL1(self.fake_mask, self.noise_mask) + \
+        #                     self.criterionL1(fake_mask_local, noise_mask_local)
 
         # 修改为
         # self.loss_G = self.loss_G_L1 * 20 + self.loss_G_GAN * 1 + self.Perceptual_loss * 1 + self.Style_Loss * 2
         # self.loss_G = self.loss_G_L1 + self.loss_G_GAN *0.2 + self.Perceptual_loss * 0.2 + self.Style_Loss *250
         self.loss_G = self.loss_l1 * self.lambdaL1 + self.loss_G_GAN * self.lambdaGan + \
                       self.perceptual_loss * self.lambdaP + self.style_loss * self.lambdaS
-        self.loss_G_mask = self.loss_l1_mask * self.lambdaL1 / 2 + self.loss_G_GAN_mask * self.lambdaGan / 2
+        self.loss_G_mask = self.loss_l1_mask * self.lambdaL1 + self.loss_G_GAN_mask * self.lambdaGan
         if self.use_inner_loss:
             self.feature_loss.backward(retain_graph=True)
-        if self.use_fake_mask or not self.has_mask_encoder:
+        if self.retain_g_graph:
             self.loss_G.backward(retain_graph=True)
         else:
             self.loss_G.backward()
@@ -248,22 +293,24 @@ class Medfe(BaseModel):
         self.pred_real_mask = self.discriminator_mask(self.noise_mask)
 
         # Local discriminator
-        input_a_local = self.input_a[:, :, self.crop_box[0]: self.crop_box[2], self.crop_box[1]: self.crop_box[3]]
-        fake_out_local = self.fake_out[:, :, self.crop_box[0]: self.crop_box[2],
-                         self.crop_box[1]: self.crop_box[3]].detach()
-        noise_mask_local = self.noise_mask[:, :, self.crop_box[0]: self.crop_box[2], self.crop_box[1]: self.crop_box[3]]
-        fake_mask_local = self.fake_mask[:, :, self.crop_box[0]: self.crop_box[2],
-                          self.crop_box[1]: self.crop_box[3]].detach()
+        # input_a_local = self.input_a[:, :, self.crop_box[0]: self.crop_box[2], self.crop_box[1]: self.crop_box[3]]
+        # fake_out_local = self.fake_out[:, :, self.crop_box[0]: self.crop_box[2],
+        #                  self.crop_box[1]: self.crop_box[3]].detach()
+        # noise_mask_local = self.noise_mask[:, :, self.crop_box[0]: self.crop_box[2], self.crop_box[1]: self.crop_box[3]]
+        # fake_mask_local = self.fake_mask[:, :, self.crop_box[0]: self.crop_box[2],
+        #                   self.crop_box[1]: self.crop_box[3]].detach()
+        #
+        # pred_real_local = self.discriminator_gt(input_a_local)
+        # pred_fake_local = self.discriminator_gt(fake_out_local)
+        # pred_real_mask_local = self.discriminator_mask(noise_mask_local)
+        # pred_fake_mask_local = self.discriminator_mask(fake_mask_local)
 
-        pred_real_local = self.discriminator_gt(input_a_local)
-        pred_fake_local = self.discriminator_gt(fake_out_local)
-        pred_real_mask_local = self.discriminator_mask(noise_mask_local)
-        pred_fake_mask_local = self.discriminator_mask(fake_mask_local)
-
-        self.loss_D = self.criterionGAN(self.pred_fake, self.pred_real, True) + \
-                      self.criterionGAN(pred_fake_local, pred_real_local, True)
-        self.loss_D_mask = self.criterionGAN(self.pred_fake_mask, self.pred_real_mask, True) + \
-                           self.criterionGAN(pred_fake_mask_local, pred_real_mask_local, True)
+        self.loss_D = self.criterionGAN(self.pred_fake, self.pred_real, True)
+        # self.loss_D = self.criterionGAN(self.pred_fake, self.pred_real, True) + \
+        #               self.criterionGAN(pred_fake_local, pred_real_local, True)
+        self.loss_D_mask = self.criterionGAN(self.pred_fake_mask, self.pred_real_mask, True)
+        # self.loss_D_mask = self.criterionGAN(self.pred_fake_mask, self.pred_real_mask, True) + \
+        #                    self.criterionGAN(pred_fake_mask_local, pred_real_mask_local, True)
         self.loss_D.backward()
         self.loss_D_mask.backward()
 

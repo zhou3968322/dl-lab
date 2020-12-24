@@ -36,7 +36,8 @@ arch:
     input_nc: 3
     ndf: 64
     n_layers: 3
-    use_spectral: false
+    # false false tried, false true tried
+    use_spectral: true
     use_sigmoid: false
   discriminator_mask:
     type: discriminator
@@ -44,7 +45,7 @@ arch:
     input_nc: 1
     ndf: 64
     n_layers: 3
-    use_spectral: false
+    use_spectral: true
     use_sigmoid: false
 loss:
   lambdaP:  5

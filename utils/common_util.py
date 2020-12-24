@@ -15,4 +15,8 @@ def get_trainer_name(name):
     return "{}{}Trainer".format(name[0].upper(), name[1:])
 
 
+def get_predictor_name(name):
+    return "{}{}Predictor".format(name[0].upper(), name[1:])
+
+
 
