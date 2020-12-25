@@ -1,9 +1,7 @@
 # -*- coding:utf-8 -*-
 # email:bingchengzhou@foxmail.com
 # create: 2020/12/14
-
-
-
+import torch.nn.functional as F
 import torch
 import torch.nn as nn
 import torchvision.models as models
@@ -247,7 +245,20 @@ class GANLoss(nn.Module):
             return errG
 
 
-class ConditonalGan
+class InnerCos(nn.Module):
+    def __init__(self):
+        super(InnerCos, self).__init__()
+        self.target = None
+        self.down_model = nn.Sequential(
+            nn.Conv2d(256, 3, kernel_size=1,stride=1, padding=0),
+            nn.Tanh()
+        )
+
+    def forward(self, x_texture_fi, x_structure_fi):
+        structure_fi = self.down_model(x_structure_fi)
+        texture_fi = self.down_model(x_texture_fi)
+        return texture_fi, structure_fi
+
 
 # class DESTLOSS(nn.Module):
 #     def __init__(self):

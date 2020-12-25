@@ -5,13 +5,13 @@ import networks
 import os
 import torch
 from utils.dl_util import init_net
-from loss.gan_loss import VGG16, PerceptualLoss, StyleLoss, GANLoss
+from loss.gan_loss import VGG16, PerceptualLoss, StyleLoss, GANLoss, InnerCos
 from utils.dl_util import get_scheduler, get_optimizer, set_requires_grad, tensor2im
 from models.base_model import BaseModel
 from collections import OrderedDict
 from utils.log import logger
-import numpy as np
-from datasets.transforms import default_transform
+import torch.nn.functional as F
+
 
 
 class Medfe(BaseModel):
@@ -50,6 +50,10 @@ class Medfe(BaseModel):
                                 arch_config["pc_block"].pop("name"))(**arch_config["pc_block"],
                                                                      use_inner_loss=use_inner_loss)
         self.use_inner_loss = self.pc_block.use_inner_loss
+        if self.use_inner_loss:
+            self.inner_loss = InnerCos()
+            self.inner_loss = init_net(self.inner_loss, **init_args)
+            self.inner_loss.to(self.device0)
         self.use_fake_mask = arch_config.get("use_fake_mask", False)
         self.pc_block = init_net(self.pc_block, **init_args, gpu_ids=[1])
         self.pc_block.reset_device(self.device1)
@@ -142,11 +146,14 @@ class Medfe(BaseModel):
                 x_out = self.pc_block(De_in, self.noise_mask)
         # x_out_real = self.pc_block(De_in, self.fake_mask)
         if self.use_inner_loss:
-            self.x_texture_fi = loss[0]
-            self.x_structure_fi = loss[1]
-            fake_b_1, fake_b_2, fake_b_3, fake_b_4, fake_b_5, fake_b_6 = self.encoder(self.input_b)
-            De_b_in = [fake_b_1, fake_b_2, fake_b_3, fake_b_4, fake_b_5, fake_b_6]
-            self.x_texture_gt, self.x_structure_gt = self.pc_block.get_features(De_b_in)
+            x_texture_fi = loss[0]
+            x_structure_fi = loss[1]
+            x_texture_fi, x_structure_fi = self.inner_loss(x_texture_fi, x_structure_fi)
+            x_texture_gt = F.interpolate(self.input_b, size=(32,32), mode='bilinear')
+            # TODO structure gt 和 texture gt得发不一样
+            x_structure_gt = F.interpolate(self.input_b, size=(32,32), mode='bilinear')
+            self.feature_loss = self.criterionL1(x_texture_fi, x_texture_gt) + \
+                                self.criterionL1(x_structure_fi, x_structure_gt)
         # x_out_real = self.pc_block(De_in, self.fake_mask)
         self.fake_out = self.decoder(x_out[0], x_out[1], x_out[2],
                                      x_out[3], x_out[4], x_out[5])
