@@ -2,6 +2,8 @@ name: medfe_test
 mode: train
 arch:
   type: medfe
+  has_mask_encoder: true
+  use_fake_mask: true
   init_args:
     init_type: normal
     init_gain: 0.2
@@ -19,10 +21,17 @@ arch:
     output_nc: 3
     ngf: 64
     use_dropout: false
+  mask_encoder:
+    type: medfe
+    name: Encoder
+    input_nc: 3
+    output_nc: 1
+    ngf: 64
+    use_dropout: false
   mask_decoder:
     type: medfe
     name: Decoder
-    input_nc: 3
+    input_nc: 1
     output_nc: 1
     ngf: 64
     use_dropout: false
@@ -35,19 +44,21 @@ arch:
     input_nc: 3
     ndf: 64
     n_layers: 3
-    use_sigmoid: true
+    use_spectral: true
+    use_sigmoid: false
   discriminator_mask:
     type: discriminator
     name: NLayerDiscriminator
     input_nc: 1
     ndf: 64
     n_layers: 3
-    use_sigmoid: true
+    use_spectral: true
+    use_sigmoid: false
 loss:
-  lambdaP:  5
+  lambdaP:  1
   lambdaS: 0.1
-  lambdaL1: 50
-  lambdaGan: 10
+  lambdaL1: 20
+  lambdaGan: 5
 trainer:
   optimizer:
     optimizer_type: "adam"
@@ -63,8 +74,8 @@ trainer:
   continue_train: false
   # continue_train的时候需要load epoch参数
 #  load_epoch: 0
-  display_freq: 10
-  print_freq: 10
+  display_freq: 40
+  print_freq: 40
   save_dir: "./checkpoints/medfe_test"
   log_dir: "./tensorboard/medfe_test"
 
@@ -78,4 +89,4 @@ datasets:
       batch_size: 1
       shuffle: false
       pin_memory: true
-      num_workers: 8
+      num_workers: 0

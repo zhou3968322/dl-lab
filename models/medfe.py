@@ -11,7 +11,7 @@ from models.base_model import BaseModel
 from collections import OrderedDict
 from utils.log import logger
 import torch.nn.functional as F
-
+from metrics import metrics
 
 
 class Medfe(BaseModel):
@@ -51,6 +51,7 @@ class Medfe(BaseModel):
                                                                      use_inner_loss=use_inner_loss)
         self.use_inner_loss = self.pc_block.use_inner_loss
         if self.use_inner_loss:
+            # 这里面作者是使用整体图像作为一个structure，但是就文字而言，它应该是局部是structure，不能直接使用这个loss
             self.inner_loss = InnerCos()
             self.inner_loss = init_net(self.inner_loss, **init_args)
             self.inner_loss.to(self.device0)
@@ -332,6 +333,13 @@ class Medfe(BaseModel):
         return input_image, fake_mask, noise_mask, fake_image, real_gt
         # return input_image, fake_mask, noise_mask, fake_image_real, fake_image, real_gt
 
+    def get_evaluate_errors(self):
+        mse = torch.mean((self.fake_out.detach() - self.input_b) ** 2)
+        mse_mask = torch.mean((self.fake_mask.detach() - self.noise_mask) ** 2)
+        psnr = 10 * torch.log10(1 / mse)
+        psnr_mask = 10 * torch.log10(1 / mse_mask)
+
+
     def get_current_errors(self):
         # show the current loss
         data = OrderedDict([('G_GAN', self.loss_G_GAN.data),
@@ -346,3 +354,5 @@ class Medfe(BaseModel):
         if self.use_inner_loss:
             data.update({"feature_loss": self.feature_loss})
         return data
+
+
