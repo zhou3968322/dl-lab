@@ -206,8 +206,8 @@ class PerceptualLoss(nn.Module):
         return content_loss
 
 
-
 class GANLoss(nn.Module):
+    # TODO merge to ConditionGANLoss, just the same
     def __init__(self,  target_real_label=1.0, target_fake_label=0.0,
                  tensor=torch.FloatTensor):
         super(GANLoss, self).__init__()
