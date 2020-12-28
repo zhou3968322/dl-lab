@@ -26,6 +26,7 @@ class MedfeTrainer(object):
         tensorboard_log_dir = config["trainer"]["log_dir"]
         self.writer = SummaryWriter(log_dir=tensorboard_log_dir, comment=self.experiment_name)
         self.display_freq = config["trainer"]["display_freq"]
+        # self.evaluate_freq = config["trainer"]["evaluate_freq"]
         self.print_freq = config["trainer"]["print_freq"]
         self.save_epoch_freq = config["trainer"].get("save_epoch_freq", 0)
         self.save_step_freq = config["trainer"].get("save_step_freq", 0)
@@ -60,6 +61,15 @@ class MedfeTrainer(object):
                     message += '%s: %.5f ' % (key, value)
                     self.writer.add_scalar(key, errors[key], self.global_step)
                 logger.info(message)
+            # if self.global_step % self.evaluate_freq == 0:
+            #     evaluate_errors = self.model.get_evaluate_errors()
+            #     t_comp = time.time() - iter_start_time
+            #     message = 'experiment:%s, (epoch: %d, steps: %d, time: %.3f) ' % (self.experiment_name, epoch,
+            #                                                                       self.global_step, t_comp)
+            #     for key, value in evaluate_errors.items():
+            #         message += '%s: %.5f ' % (key, value)
+            #         self.writer.add_scalar(key, evaluate_errors[key], self.global_step)
+            #     logger.info(message)
             if self.global_step % self.display_freq == 0:
                 visual_input = self.model.get_current_visuals()
                 grid = torchvision.utils.make_grid(list(visual_input), nrow=3)

@@ -1,4 +1,4 @@
-name: medfe_mask_decoder
+name: medfe_fake_mask_decoder
 mode: train
 arch:
   type: medfe
@@ -76,15 +76,15 @@ trainer:
 #  load_epoch: 0
   display_freq: 40
   print_freq: 40
-  save_dir: "./checkpoints/medfe_with_fake_mask_decoder"
-  log_dir: "./tensorboard/medfe_with_fake_mask_decoder"
+  save_dir: "./checkpoints/medfe_fake_mask_decoder"
+  log_dir: "./tensorboard/medfe_fake_mask_decoder"
 
 datasets:
   train:
     dataset:
       type: AlignedMaskDataset
       args:
-        data_root: /data_ssd/ocr/zhoubingcheng/gan_datasets/gan_aligned_crop_data_with_mask_small/
+        data_root: /data/zhoubingcheng/gan_datasets/gan_aligned_crop_data_with_mask_big
     loader:
       batch_size: 1
       shuffle: false

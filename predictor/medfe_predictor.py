@@ -10,6 +10,7 @@ import time
 from datasets.transforms import default_transform
 from utils.log import logger
 from utils.dl_util import tensor2im
+from utils.common_util import get_file_list
 
 
 class MedfePredictor(object):
@@ -24,10 +25,11 @@ class MedfePredictor(object):
         self.long_side = config["predictor"]["long_side"]
         self.model.set_mode()
         test_img_dir = config["predictor"]["test_img_dir"]
-        self.input_img_paths = glob.glob(os.path.join(test_img_dir, "*.png"))
+        self.input_img_paths = get_file_list(test_img_dir, p_postfix=['.jpg', '.png', ".tif", ".JPG", ".jpeg"])
         out_img_dir = config["predictor"]["out_img_dir"]
         os.makedirs(out_img_dir, exist_ok=True)
         self.out_img_dir = out_img_dir
+        self.combine_res = True
 
     def predict(self):
         sum_time = 0
@@ -48,10 +50,19 @@ class MedfePredictor(object):
             sum_time += time.time() - t0
             img_name = os.path.basename(img_path)
             file_pref, file_ext = img_name.rsplit(".", 1)
-            out_mask_path = os.path.join(self.out_img_dir, "{}_mask.{}".format(file_pref, file_ext))
-            out_img_path = os.path.join(self.out_img_dir, "{}_res.{}".format(file_pref, file_ext))
-            mask_im.save(out_mask_path)
-            fake_im.save(out_img_path)
+            if self.combine_res:
+                new_im = Image.new("RGB", (3 * nw, nh), (255, 255, 255))
+                new_im.paste(img.resize((nw, nh), resample=Image.ANTIALIAS), box=(0, 0, nw, nh))
+                new_im.paste(mask_im.convert("RGB"), box=(nw, 0, 2 * nw, nh))
+                new_im.paste(fake_im, box=(nw * 2, 0, nw * 3, nh))
+                out_img_path = os.path.join(self.out_img_dir, "{}.{}".format(file_pref, file_ext))
+                new_im.save(out_img_path)
+            else:
+                out_mask_path = os.path.join(self.out_img_dir, "{}_mask.{}".format(file_pref, file_ext))
+                out_img_path = os.path.join(self.out_img_dir, "{}_res.{}".format(file_pref, file_ext))
+                mask_im.save(out_mask_path)
+                fake_im.save(out_img_path)
+
         logger.info("average cost:{}".format(sum_time / len(self.input_img_paths)))
 
 

@@ -127,7 +127,6 @@ class Medfe(BaseModel):
         self.input_b = data["B"].to(self.device)
         self.crop_box = data["crop_box"][0]
         self.noise_mask = (data["noise_mask"].to(self.device))  # noise_mask, hole is 0.0
-
         fake_p_1, fake_p_2, fake_p_3, fake_p_4, fake_p_5, fake_p_6 = self.encoder(self.input_a)
         De_in = [fake_p_1, fake_p_2, fake_p_3, fake_p_4, fake_p_5, fake_p_6]
         if self.has_mask_encoder:
@@ -135,16 +134,14 @@ class Medfe(BaseModel):
             self.fake_mask = self.mask_decoder(fake_m_1, fake_m_2, fake_m_3, fake_m_4, fake_m_5, fake_m_6)
         else:
             self.fake_mask = self.mask_decoder(fake_p_1, fake_p_2, fake_p_3, fake_p_4, fake_p_5, fake_p_6)
-        if self.use_inner_loss:
-            if self.use_fake_mask:
-                x_out, loss = self.pc_block(De_in, self.fake_mask)
-            else:
-                x_out, loss = self.pc_block(De_in, self.noise_mask)
+        if self.use_fake_mask:
+            input_mask = self.noise_mask.byte()
         else:
-            if self.use_fake_mask:
-                x_out = self.pc_block(De_in, self.fake_mask)
-            else:
-                x_out = self.pc_block(De_in, self.noise_mask)
+            input_mask = self.fake_mask.byte()
+        if self.use_inner_loss:
+            x_out, loss = self.pc_block(De_in, input_mask)
+        else:
+            x_out = self.pc_block(De_in, input_mask)
         # x_out_real = self.pc_block(De_in, self.fake_mask)
         if self.use_inner_loss:
             x_texture_fi = loss[0]
@@ -334,11 +331,20 @@ class Medfe(BaseModel):
         # return input_image, fake_mask, noise_mask, fake_image_real, fake_image, real_gt
 
     def get_evaluate_errors(self):
-        mse = torch.mean((self.fake_out.detach() - self.input_b) ** 2)
-        mse_mask = torch.mean((self.fake_mask.detach() - self.noise_mask) ** 2)
-        psnr = 10 * torch.log10(1 / mse)
-        psnr_mask = 10 * torch.log10(1 / mse_mask)
-
+        mse = metrics.MSE()(self.fake_out.detach(), self.input_b)
+        mse_mask = metrics.MSE()(self.fake_mask.detach(), self.noise_mask)
+        psnr = metrics.PSNR()(self.fake_out.detach(), self.input_b)
+        psnr_mask = metrics.PSNR()(self.fake_mask.detach(), self.noise_mask)
+        ssim = metrics.SSIM()(self.fake_out.detach(), self.input_b)
+        ssim_mask = metrics.SSIM()(self.fake_mask.detach(), self.noise_mask)
+        data = OrderedDict([('mse', mse.data),
+                            ('mse_mask', mse_mask.data),
+                            ('psnr', psnr.data),
+                            ('psnr_mask', psnr_mask.data),
+                            ("ssim", ssim),
+                            ("ssim_mask", ssim_mask)
+                            ])
+        return data
 
     def get_current_errors(self):
         # show the current loss

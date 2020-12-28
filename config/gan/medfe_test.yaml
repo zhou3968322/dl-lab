@@ -2,7 +2,6 @@ name: medfe_test
 mode: train
 arch:
   type: medfe
-  has_mask_encoder: true
   use_fake_mask: true
   init_args:
     init_type: normal
@@ -76,6 +75,7 @@ trainer:
 #  load_epoch: 0
   display_freq: 40
   print_freq: 40
+  evaluate_freq: 1
   save_dir: "./checkpoints/medfe_test"
   log_dir: "./tensorboard/medfe_test"
 
