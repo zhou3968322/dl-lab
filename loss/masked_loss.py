@@ -10,8 +10,18 @@ class MaskedL1Loss(L1Loss):
         super(MaskedL1Loss, self).__init__(size_average, reduce, reduction)
         self.lamb = lamb
 
-    def forward(self, input, target, mask):
-        pass
+    def forward(self, pred, target, mask=None):
+        # mask 为None的时候target is mask
+        b, c, h, w = pred.size()
+        l1_diff = torch.abs(target - pred)
+        if mask is not None:
+            hard = mask == 0.0
+            easy = mask == 1.0
+        else:
+            hard = target == 0.0
+            easy = target == 1.0
+        loss = self.lamb * (torch.sum(l1_diff * easy) / (h * w)) + (1 - self.lamb) * (torch.sum(l1_diff * hard) / (h * w))
+        return loss
 
 
 class MaskedMSELoss(MSELoss):
@@ -21,3 +31,4 @@ class MaskedMSELoss(MSELoss):
 
     def forward(self, input, target, mask):
         pass
+

@@ -134,7 +134,7 @@ class AlignedMaskDataset(Dataset):
         # 网路需要学到颜色信息。
         # normalize 防止如果包含resize的情况, 插值的问题
         # noise_mask[noise_mask >= -0.2] = 1.0
-        # noise_mask[noise_mask < 0.2] = -1.0
+        # noise_mask[noise_mask < -0.2] = -1.0
         return {'A': A, 'B': B, "noise_mask": noise_mask, "crop_box": torch.tensor(crop_box),
                 "AB_path": AB_path}
 

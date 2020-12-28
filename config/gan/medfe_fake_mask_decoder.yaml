@@ -2,15 +2,13 @@ name: medfe_fake_mask_decoder
 mode: train
 arch:
   type: medfe
-  has_mask_encoder: true
-  use_fake_mask: true
   init_args:
     init_type: normal
     init_gain: 0.2
   encoder:
     type: medfe
     name: Encoder
-    input_nc: 3
+    input_nc: 4
     output_nc: 3
     ngf: 64
     use_dropout: false
@@ -74,8 +72,8 @@ trainer:
   continue_train: false
   # continue_train的时候需要load epoch参数
 #  load_epoch: 0
-  display_freq: 40
-  print_freq: 40
+  display_freq: 45
+  print_freq: 45
   save_dir: "./checkpoints/medfe_fake_mask_decoder"
   log_dir: "./tensorboard/medfe_fake_mask_decoder"
 

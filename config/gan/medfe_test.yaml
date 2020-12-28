@@ -2,14 +2,13 @@ name: medfe_test
 mode: train
 arch:
   type: medfe
-  use_fake_mask: true
   init_args:
     init_type: normal
     init_gain: 0.2
   encoder:
     type: medfe
     name: Encoder
-    input_nc: 3
+    input_nc: 4
     output_nc: 3
     ngf: 64
     use_dropout: false
@@ -84,7 +83,7 @@ datasets:
     dataset:
       type: AlignedMaskDataset
       args:
-        data_root: /data_ssd/ocr/zhoubingcheng/gan_datasets/gan_aligned_crop_data_with_mask_small/
+        data_root: /data/zhoubingcheng/gan_datasets/gan_aligned_crop_data_with_mask_big
     loader:
       batch_size: 1
       shuffle: false
