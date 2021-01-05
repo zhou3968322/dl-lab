@@ -60,7 +60,7 @@ loss:
 trainer:
   optimizer:
     optimizer_type: "adam"
-    lr: 0.0002
+    lr: 0.0008
     beta1: 0.5
   scheduler:
     lr_policy: lambda
@@ -72,8 +72,8 @@ trainer:
   continue_train: false
   # continue_train的时候需要load epoch参数
 #  load_epoch: 0
-  display_freq: 45
-  print_freq: 45
+  display_freq: 21
+  print_freq: 63
   save_dir: "./checkpoints/medfe_mask_decoder"
   log_dir: "./tensorboard/medfe_mask_decoder"
 

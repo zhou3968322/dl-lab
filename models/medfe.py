@@ -84,6 +84,7 @@ class Medfe(BaseModel):
             self.lambdaP = loss_args.pop("lambdaP")
             self.StyleLoss = StyleLoss(vgg_module=self.vgg)
             self.lambdaS = loss_args.pop("lambdaS")
+            self.criterionL1 = torch.nn.L1Loss()
             self.criterionMaskedL1 = MaskedL1Loss()
             self.lambdaL1 = loss_args.pop("lambdaL1")
             if len(self.gpu_ids) > 0:
@@ -211,13 +212,11 @@ class Medfe(BaseModel):
     @torch.no_grad()
     def inference(self, image):
         image_tensor = torch.unsqueeze(image.to(self.device0), dim=0)
-        fake_p_1, fake_p_2, fake_p_3, fake_p_4, fake_p_5, fake_p_6 = self.encoder(image_tensor)
+        fake_m_1, fake_m_2, fake_m_3, fake_m_4, fake_m_5, fake_m_6 = self.mask_encoder(image_tensor)
+        fake_mask = self.mask_decoder(fake_m_1, fake_m_2, fake_m_3, fake_m_4, fake_m_5, fake_m_6)
+        fake_p_1, fake_p_2, fake_p_3, fake_p_4, fake_p_5, fake_p_6 = self.encoder(
+            torch.cat([image_tensor, fake_mask], dim=1))
         De_in = [fake_p_1, fake_p_2, fake_p_3, fake_p_4, fake_p_5, fake_p_6]
-        if self.has_mask_encoder:
-            fake_m_1, fake_m_2, fake_m_3, fake_m_4, fake_m_5, fake_m_6 = self.mask_encoder(image_tensor)
-            fake_mask = self.mask_decoder(fake_m_1, fake_m_2, fake_m_3, fake_m_4, fake_m_5, fake_m_6)
-        else:
-            fake_mask = self.mask_decoder(fake_p_1, fake_p_2, fake_p_3, fake_p_4, fake_p_5, fake_p_6)
         if self.use_inner_loss:
             x_out, loss = self.pc_block(De_in, fake_mask)
         else:
@@ -272,7 +271,8 @@ class Medfe(BaseModel):
         self.loss_G_GAN = self.criterionGAN(pred_fake, pred_real, False)
         # self.loss_G_GAN = self.criterionGAN(pred_fake, pred_real, False) + \
         #                   self.criterionGAN(pred_fake_local, pred_real_local, False)
-        self.loss_l1 = self.criterionMaskedL1(self.fake_out, self.input_b, self.noise_mask)
+        self.loss_l1 = self.criterionL1(self.fake_out, self.input_b)
+        # self.loss_l1 = self.criterionMaskedL1(self.fake_out, self.input_b, self.noise_mask)
         # self.loss_l1 = self.criterionL1(self.fake_out, self.input_b) + \
         #                self.criterionL1(fake_out_local, input_b_local)
         self.perceptual_loss = self.PerceptualLoss(self.fake_out, self.input_b)
@@ -281,7 +281,8 @@ class Medfe(BaseModel):
         self.loss_G_GAN_mask = self.criterionGAN(pred_fake_mask, pred_real_mask, False)
         # self.loss_G_GAN_mask = self.criterionGAN(pred_fake_mask, pred_real_mask, False) + \
         #                        self.criterionGAN(pred_fake_mask_local, pred_real_mask_local, False)
-        self.loss_l1_mask = self.criterionMaskedL1(self.fake_mask, self.noise_mask)
+        self.loss_l1_mask = self.criterionL1(self.fake_mask, self.noise_mask)
+        # self.loss_l1_mask = self.criterionMaskedL1(self.fake_mask, self.noise_mask)
         # self.loss_l1_mask = self.criterionL1(self.fake_mask, self.noise_mask) + \
         #                     self.criterionL1(fake_mask_local, noise_mask_local)
 

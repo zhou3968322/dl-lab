@@ -1,5 +1,5 @@
-name: medfe_test
-mode: train
+name: medfe_predict
+mode: predict
 arch:
   type: medfe
   init_args:
@@ -40,7 +40,7 @@ arch:
     type: discriminator
     name: NLayerDiscriminator
     input_nc: 3
-    ndf: 64
+    ndf: 6
     n_layers: 3
     use_spectral: true
     use_sigmoid: false
@@ -52,40 +52,9 @@ arch:
     n_layers: 3
     use_spectral: true
     use_sigmoid: false
-loss:
-  lambdaP:  1
-  lambdaS: 0.1
-  lambdaL1: 20
-  lambdaGan: 5
-trainer:
-  optimizer:
-    optimizer_type: "adam"
-    lr: 0.0002
-    beta1: 0.5
-  scheduler:
-    lr_policy: lambda
-    # lamdata |setp |plateau |cosine
-    start_epoch: 1
-    niter: 20
-    niter_decay: 100
-  save_epoch_freq: 1
-  continue_train: false
-  # continue_train的时候需要load epoch参数
-#  load_epoch: 0
-  display_freq: 1
-  print_freq: 1
-  evaluate_freq: 1
-  save_dir: "./checkpoints/medfe_test"
-  log_dir: "./tensorboard/medfe_test"
+predictor:
+  load_epoch: 2
+  model_dir: "./checkpoints/medfe"
+  long_side: 1024
+  out_img_dir: "./online_data/output"
 
-datasets:
-  train:
-    dataset:
-      type: AlignedMaskDataset
-      args:
-        data_root: /data/zhoubingcheng/gan_datasets/gan_aligned_crop_data_with_mask_big
-    loader:
-      batch_size: 1
-      shuffle: false
-      pin_memory: true
-      num_workers: 0

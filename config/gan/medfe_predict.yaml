@@ -2,13 +2,19 @@ name: medfe_predict
 mode: predict
 arch:
   type: medfe
-  use_fake_mask: true
   init_args:
     init_type: normal
     init_gain: 0.2
   encoder:
     type: medfe
     name: Encoder
+    input_nc: 4
+    output_nc: 3
+    ngf: 64
+    use_dropout: false
+  decoder:
+    type: medfe
+    name: Decoder
     input_nc: 3
     output_nc: 3
     ngf: 64
@@ -20,17 +26,10 @@ arch:
     output_nc: 1
     ngf: 64
     use_dropout: false
-  decoder:
-    type: medfe
-    name: Decoder
-    input_nc: 3
-    output_nc: 3
-    ngf: 64
-    use_dropout: false
   mask_decoder:
     type: medfe
     name: Decoder
-    input_nc: 3
+    input_nc: 1
     output_nc: 1
     ngf: 64
     use_dropout: false
@@ -43,7 +42,7 @@ arch:
     input_nc: 3
     ndf: 64
     n_layers: 3
-    use_spectral: false
+    use_spectral: true
     use_sigmoid: false
   discriminator_mask:
     type: discriminator
@@ -51,12 +50,12 @@ arch:
     input_nc: 1
     ndf: 64
     n_layers: 3
-    use_spectral: false
+    use_spectral: true
     use_sigmoid: false
 predictor:
-  load_epoch: 12
-  model_dir: "./checkpoints/medfe_with_mask_decoder"
+  load_epoch: 2
+  model_dir: "./checkpoints/medfe"
   long_side: 1024
   test_img_dir: "/data/zhoubingcheng/noise_testdata/imgs"
-  out_img_dir: "/data/zhoubingcheng/noise_testdata/imgs_output_medfe_mask_encoder"
+  out_img_dir: "/data/zhoubingcheng/noise_testdata/imgs_output_medfe_mask_encoder2"
 

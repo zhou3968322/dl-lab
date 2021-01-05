@@ -21,6 +21,7 @@ class MedfeTrainer(object):
 
         model_name = get_model_name(config["arch"].pop("type"))
         self.model = getattr(models, model_name)(config)
+        self.model.set_mode()
         logger.info("model init success")
 
         tensorboard_log_dir = config["trainer"]["log_dir"]

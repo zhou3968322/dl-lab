@@ -2,6 +2,7 @@
 # email:bingchengzhou@foxmail.com
 # create: 2020/12/14
 import numpy as np
+from PIL import Image, ExifTags
 
 
 def is_box_outside_rect(poly, rect):
@@ -61,3 +62,23 @@ def convert_poly_to_rect(poly):
     y0 = np.min(poly[:, 1])
     y1 = np.max(poly[:, 1])
     return np.array([x0, y0, x1, y1])
+
+
+def correct_orientation(img_path):
+    try:
+        image = Image.open(img_path)
+        for orientation in ExifTags.TAGS.keys():
+            if ExifTags.TAGS[orientation] == 'Orientation':
+                break
+        exif = dict(image._getexif().items())
+        if exif[orientation] == 3:
+            image = image.rotate(180, expand=True)
+        elif exif[orientation] == 6:
+            image = image.rotate(270, expand=True)
+        elif exif[orientation] == 8:
+            image = image.rotate(90, expand=True)
+        image.save(img_path)
+        image.close()
+    except (AttributeError, KeyError, IndexError):
+        # cases: image don't have getexif
+        pass
