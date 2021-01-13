@@ -231,6 +231,7 @@ class GANLoss(nn.Module):
             if create_label:
                 self.fake_label_var= self.Tensor(input.size()).fill_(self.real_label)
             target_tensor = self.fake_label_var
+        adversarial_loss = torch.nn.BCELoss()
         return target_tensor
 
     def __call__(self, y_pred_fake, y_pred, target_is_real):
@@ -319,7 +320,7 @@ class ConditionGANLoss(nn.Module):
             target_tensor = self.real_label
         else:
             target_tensor = self.fake_label
-        return target_tensor.expand_as(prediction)
+        return target_tensor.expand_as(prediction).to(prediction.device)
 
     def __call__(self, prediction, target_is_real):
         """Calculate loss given Discriminator's output and grount truth labels.

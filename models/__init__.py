@@ -11,6 +11,7 @@
 
 from .crnn import AttentionCRNN
 from .medfe import Medfe
+from .pix2pix import Pix2pix
 
 
 

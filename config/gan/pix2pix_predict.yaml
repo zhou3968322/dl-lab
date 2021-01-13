@@ -1,0 +1,28 @@
+name: pix2pix
+mode: eval
+arch:
+  type: pix2pix
+  init_args:
+    init_type: normal
+    init_gain: 0.2
+  generator:
+    type: pix2pix
+    name: UnetGenerator
+    input_nc: 3
+    output_nc: 1
+    num_downs: 8
+    ngf: 64
+    use_dropout: true
+  discriminator:
+    type: pix2pix
+    name: NLayerDiscriminator
+    input_nc: 4
+loss:
+  gan_mode: lsgan
+  lambdaL1: 20
+predictor:
+  load_epoch: 2
+  model_dir: "./checkpoints/pix2pix"
+  long_side: 1024
+  test_img_dir: "/data/zhoubingcheng/noise_testdata/imgs"
+  out_img_dir: "/data/zhoubingcheng/noise_testdata/imgs_output_pix2pix"

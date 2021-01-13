@@ -3,7 +3,7 @@
 # create: 2020/12/2
 import torch.nn as nn
 from networks.attention import Attention
-from networks.lstm import BidirectionalLSTM
+from networks.components.lstm import BidirectionalLSTM
 import torch.nn.functional as F
 from torchvision.models.resnet import resnet18
 

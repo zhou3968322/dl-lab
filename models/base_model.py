@@ -23,7 +23,7 @@ class BaseModel(object):
             self.save_dir = config["trainer"].pop("save_dir")
             os.makedirs(self.save_dir, exist_ok=True)
             self.continue_train = config["trainer"].pop("continue_train")
-        elif self.mode == "predict":
+        elif self.mode in ["predict", "eval"]:
             self.save_dir = config["predictor"].pop("model_dir")
 
     def load_networks(self, which_epoch):

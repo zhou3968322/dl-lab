@@ -72,8 +72,9 @@ trainer:
   continue_train: false
   # continue_train的时候需要load epoch参数
 #  load_epoch: 0
-  display_freq: 21
+  display_freq: 63
   print_freq: 63
+  evaluate_freq: 500
   save_dir: "./checkpoints/medfe_mask_decoder"
   log_dir: "./tensorboard/medfe_mask_decoder"
 
@@ -82,7 +83,7 @@ datasets:
     dataset:
       type: AlignedMaskDataset
       args:
-        data_root: /data/zhoubingcheng/gan_datasets/gan_aligned_crop_data_with_mask_big
+        data_root: /data/zhoubingcheng/gan_datasets/gan_aligned_crop_data_with_mask_new/
     loader:
       batch_size: 1
       shuffle: false

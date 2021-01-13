@@ -1,0 +1,54 @@
+name: pix2pix
+mode: train
+arch:
+  type: pix2pix
+  init_args:
+    init_type: normal
+    init_gain: 0.2
+  generator:
+    type: pix2pix
+    name: UnetGenerator
+    input_nc: 3
+    output_nc: 1
+    num_downs: 8
+    ngf: 64
+    use_dropout: true
+  discriminator:
+    type: pix2pix
+    name: NLayerDiscriminator
+    input_nc: 4
+loss:
+  gan_mode: lsgan
+  lambdaL1: 20
+trainer:
+  optimizer:
+    optimizer_type: "adam"
+    lr: 0.008
+    beta1: 0.5
+  scheduler:
+    lr_policy: lambda
+    # lamdata |setp |plateau |cosine
+    start_epoch: 2
+    niter: 10
+    niter_decay: 20
+  save_step_freq: 100000
+  continue_train: true
+  load_epoch: 2
+  # continue_train的时候需要load epoch参数
+  display_freq: 100
+  print_freq: 100
+  evaluate_freq: 1000
+  save_dir: "./checkpoints/pix2pix"
+  log_dir: "./tensorboard/pix2pix"
+
+datasets:
+  train:
+    dataset:
+      type: Pix2PixDataset
+      args:
+        data_root: /data/zhoubingcheng/gan_datasets/gan_aligned_crop_data_with_mask_big
+    loader:
+      batch_size: 1
+      shuffle: true
+      pin_memory: true
+      num_workers: 16

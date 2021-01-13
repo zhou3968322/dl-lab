@@ -5,5 +5,6 @@
 
 from .crnn_trainer import CrnnTrainer
 from .medfe_trainer import MedfeTrainer
+from .pix2pix_trainer import Pix2pixTrainer
 
 

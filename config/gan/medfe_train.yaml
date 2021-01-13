@@ -60,7 +60,7 @@ loss:
 trainer:
   optimizer:
     optimizer_type: "adam"
-    lr: 0.0004
+    lr: 0.0008
     beta1: 0.5
   scheduler:
     lr_policy: lambda
@@ -69,11 +69,12 @@ trainer:
     niter: 20
     niter_decay: 100
   save_step_freq: 100000
-  continue_train: false
+  continue_train: true
   # continue_train的时候需要load epoch参数
-#  load_epoch: 0
+  load_epoch: 2
   display_freq: 63
   print_freq: 63
+  evaluate_freq: 500
   save_dir: "./checkpoints/medfe"
   log_dir: "./tensorboard/medfe"
 
@@ -85,6 +86,6 @@ datasets:
         data_root: /data/zhoubingcheng/gan_datasets/gan_aligned_crop_data_with_mask_big
     loader:
       batch_size: 1
-      shuffle: false
+      shuffle: true
       pin_memory: true
       num_workers: 16

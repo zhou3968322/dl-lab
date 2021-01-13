@@ -1,6 +1,7 @@
 # -*- coding:utf-8 -*-
 # email:bingchengzhou@foxmail.com
-# create: 2020/12/14
+# create: 2021/1/8
+
 from utils.common_util import get_model_name
 import models, datasets
 from utils.log import logger
@@ -14,7 +15,7 @@ from utils.common_util import get_file_list
 from utils.img_util import correct_orientation
 
 
-class MedfePredictor(object):
+class Pix2pixPredictor(object):
 
     def __init__(self, config):
         self.experiment_name = config.pop('name')
@@ -52,10 +53,9 @@ class MedfePredictor(object):
         nh = int(h * ratio)
         input_a.paste(img.resize((nw, nh), resample=Image.ANTIALIAS))
         img_tensor = self.transform(input_a)
-        mask, fake_b = self.model.inference(img_tensor)
+        mask = self.model.inference(img_tensor)
         mask_im = Image.fromarray(tensor2im(mask)).crop(box=(0, 0, nw, nh))
-        fake_im = Image.fromarray(tensor2im(fake_b)).crop(box=(0, 0, nw, nh))
-        return mask_im, fake_im
+        return mask_im
 
     def predict_batch(self):
         sum_time = 0
@@ -63,24 +63,21 @@ class MedfePredictor(object):
             t0 = time.time()
             correct_orientation(img_path)
             img = Image.open(img_path)
-            mask_im, fake_im = self.predict_single(img)
+            mask_im = self.predict_single(img)
             logger.info("current img:{} cost:{}".format(img_path, time.time() - t0))
             sum_time += time.time() - t0
             img_name = os.path.basename(img_path)
             file_pref, file_ext = img_name.rsplit(".", 1)
-            nw, nh = fake_im.size
+            nw, nh = mask_im.size
             if self.combine_res:
-                new_im = Image.new("RGB", (3 * nw, nh), (255, 255, 255))
+                new_im = Image.new("RGB", (2 * nw, nh), (255, 255, 255))
                 new_im.paste(img.resize((nw, nh), resample=Image.ANTIALIAS), box=(0, 0, nw, nh))
                 new_im.paste(mask_im.convert("RGB"), box=(nw, 0, 2 * nw, nh))
-                new_im.paste(fake_im, box=(nw * 2, 0, nw * 3, nh))
                 out_img_path = os.path.join(self.out_img_dir, "{}.{}".format(file_pref, file_ext))
                 new_im.save(out_img_path)
             else:
                 out_mask_path = os.path.join(self.out_img_dir, "{}_mask.{}".format(file_pref, file_ext))
-                out_img_path = os.path.join(self.out_img_dir, "{}_res.{}".format(file_pref, file_ext))
                 mask_im.save(out_mask_path)
-                fake_im.save(out_img_path)
 
         logger.info("average cost:{}".format(sum_time / len(self.input_img_paths)))
 

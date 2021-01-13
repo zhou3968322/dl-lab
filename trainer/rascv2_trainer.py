@@ -1,15 +1,16 @@
 # -*- coding:utf-8 -*-
 # email:bingchengzhou@foxmail.com
-# create: 2020/12/14
+# create: 2021/1/12
+
 from utils.common_util import get_model_name
 import models, datasets
 from utils.log import logger
-import time, torch, torchvision
+import time, torchvision
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
 
-class MedfeTrainer(object):
+class DbwrTrainer(object):
 
     def __init__(self, config):
         self.experiment_name = config.pop('name')
@@ -81,16 +82,12 @@ class MedfeTrainer(object):
                                       self.global_step)
             if self.global_step % self.evaluate_freq == 0:
                 self.model.set_mode(mode="eval")
-                fake_mask, fake_out = self.model.inference(train_data["A"])
-                fake_out_test = self.model.inference(train_data["A"], train_data["noise_mask"])
-                b, c, h, w = fake_mask.size()
+                fake_b = self.model.inference(train_data["A"])
+                b, c, h, w = fake_b.size()
                 input_image = (train_data["A"].data.cpu()[0, :, :, :] + 1) / 2.0
-                fake_mask = ((fake_mask.data.cpu()[0, :, :, :] + 1) / 2.0).expand(3, h, w)
-                noise_mask = ((train_data["noise_mask"].data.cpu()[0, :, :, :] + 1) / 2.0).expand(3, h, w)
-                fake_image = (fake_out.data.cpu()[0, :, :, :] + 1) / 2.0
-                fake_image_test = ((fake_out_test.data.cpu()[0, :, :, :] + 1) / 2.0).expand(3, h, w)
-                real_gt = (train_data["B"].data.cpu()[0, :, :, :] + 1) / 2.0
-                visuals = [input_image, fake_mask, noise_mask, fake_image, fake_image_test, real_gt]
+                fake_b = ((fake_b.data.cpu()[0, :, :, :] + 1) / 2.0).expand(3, h, w)
+                real_b = ((train_data["B"].data.cpu()[0, :, :, :] + 1) / 2.0).expand(3, h, w)
+                visuals = [input_image, fake_b, real_b]
                 grid = torchvision.utils.make_grid(visuals, nrow=3)
                 img_name = self.model.img_name
                 self.writer.add_image('experiment_{}_eval_epoch_{}_step_{}_img_name_{}'.
