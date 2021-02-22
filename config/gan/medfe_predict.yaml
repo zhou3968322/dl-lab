@@ -53,9 +53,9 @@ arch:
     use_spectral: true
     use_sigmoid: false
 predictor:
-  load_epoch: 2
+  load_epoch: 6
   model_dir: "./checkpoints/medfe"
   long_side: 1024
-  test_img_dir: "/data/zhoubingcheng/noise_testdata/signet_imgs"
-  out_img_dir: "/data/zhoubingcheng/noise_testdata/signet_imgs_output_medfe_mask_encoder2"
+  test_img_dir: "/data/zhoubingcheng/noise_testdata/imgs"
+  out_img_dir: "/data/zhoubingcheng/noise_testdata/imgs_output_medfe_epoch6"
 

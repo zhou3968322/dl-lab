@@ -1,0 +1,52 @@
+name: wdnet
+mode: train
+arch:
+  type: wdnet
+  init_args:
+    init_type: normal
+    init_gain: 0.2
+  generator:
+    type: wdnet
+    name: Generator
+    n_channels: 3
+    n_classes: 3
+  discriminator:
+    type: wdnet
+    name: Discriminator
+    input_dim: 6
+    output_dim: 1
+loss:
+  lambdaMask: 50.0
+trainer:
+  optimizer:
+    optimizer_type: "adam"
+    lr: 0.0002
+    beta1: 0.5
+  scheduler:
+    lr_policy: lambda
+    # lamdata |setp |plateau |cosine
+    start_epoch: 1
+    niter: 10
+    niter_decay: 20
+#  save_step_freq: 100000
+  continue_train: false
+  save_epoch_freq: 1
+#  load_epoch: 4
+  # continue_train的时候需要load epoch参数
+  display_freq: 100
+  print_freq: 100
+  evaluate_freq: 1000
+  save_dir: "./checkpoints/wdnet"
+  log_dir: "./tensorboard/wdnet"
+
+datasets:
+  train:
+    dataset:
+      type: WdnetDataset
+      args:
+        data_root: /data_ssd/ocr/zhoubingcheng/gan_datasets/gan_document_aligned_data
+    loader:
+      batch_size: 1
+      shuffle: true
+      pin_memory: true
+      num_workers: 16

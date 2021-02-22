@@ -28,12 +28,12 @@ trainer:
   scheduler:
     lr_policy: lambda
     # lamdata |setp |plateau |cosine
-    start_epoch: 2
+    start_epoch: 7
     niter: 10
     niter_decay: 20
   save_step_freq: 100000
   continue_train: true
-  load_epoch: 2
+  load_epoch: 7
   # continue_train的时候需要load epoch参数
   display_freq: 100
   print_freq: 100

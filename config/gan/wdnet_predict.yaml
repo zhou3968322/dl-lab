@@ -1,0 +1,23 @@
+name: pix2pix
+mode: eval
+arch:
+  type: wdnet
+  init_args:
+    init_type: normal
+    init_gain: 0.2
+  generator:
+    type: wdnet
+    name: Generator
+    n_channels: 3
+    n_classes: 3
+  discriminator:
+    type: wdnet
+    name: Discriminator
+    input_dim: 6
+    output_dim: 1
+predictor:
+  load_epoch: 1
+  model_dir: "./checkpoints/wdnet"
+  long_side: 1024
+  test_img_dir: "/data/zhoubingcheng/noise_testdata/imgs"
+  out_img_dir: "/data/zhoubingcheng/noise_testdata/imgs_output_wdnet_epoch1"

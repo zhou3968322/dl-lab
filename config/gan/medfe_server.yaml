@@ -53,7 +53,7 @@ arch:
     use_spectral: true
     use_sigmoid: false
 predictor:
-  load_epoch: 2
+  load_epoch: 4
   model_dir: "./checkpoints/medfe"
   long_side: 1024
   out_img_dir: "./online_data/output"

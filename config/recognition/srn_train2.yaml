@@ -1,0 +1,59 @@
+name: srn
+mode: train
+arch:
+  type: srn
+  init_args:
+    init_type: kaiming
+    init_gain: 0.2
+  srn:
+    type: tr
+    name: TextRecognitionModel
+    img_h: 48
+    img_w: 800
+    input_channel: 3
+    position_dim: 201 # position_dim must
+  batch_max_length: 101 # 包含eos token
+  charset_path: /data_ssd/ocr/huangdeng/dataset/recognition/new_doc.txt
+
+trainer:
+  grad_clip: 5
+  optimizer:
+    optimizer_type: "adam"
+    lr: 0.0004
+    beta1: 0.5
+  scheduler:
+    lr_policy: lambda
+    # lamdata |setp |plateau |cosine
+    start_epoch: 1
+    niter: 10
+    niter_decay: 20
+  save_step_freq: 20000
+  continue_train: false
+#  load_epoch: 7
+  # continue_train的时候需要load epoch参数
+  display_val_freq: 100
+  print_freq: 100
+  evaluate_freq: 20000
+  save_dir: "./checkpoints/srn2"
+  log_dir: "./tensorboard/srn2"
+
+datasets:
+  train:
+    dataset:
+      type: TrDataset
+      args:
+        data_root: /data/yocr/data/recognition_data/0926_train_data/data_360W/
+    loader:
+      batch_size: 32
+      shuffle: true
+      num_workers: 8
+  val:
+    dataset:
+      type: TrDataset
+      args:
+#        data_root: /data_ssd/ocr/huangdeng/dataset/recognition/recognition_generate/clear_data_val
+        data_root: /data_ssd/ocr/huangdeng/dataset/recognition/recognition_generate/train_paste
+    loader:
+      batch_size: 16
+      shuffle: true
+      num_workers: 8
