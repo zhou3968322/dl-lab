@@ -18,7 +18,7 @@ def get_gpu_ids(gpu_ids):
         return gpu_ids
 
 
-def init_weights(net, init_type='normal', gain=0.02, i_func=None):
+def init_weights(net, init_type='normal', gain=0.02):
     def init_func(m):
         classname = m.__class__.__name__
         if hasattr(m, 'weight') and (classname.find('Conv') != -1 or classname.find('Linear') != -1):
@@ -37,13 +37,12 @@ def init_weights(net, init_type='normal', gain=0.02, i_func=None):
         elif classname.find('BatchNorm2d') != -1:
             init.normal(m.weight.data, 1.0, gain)
             init.constant(m.bias.data, 0.0)
-    if i_func is not None:
-        init_func = i_func
+
     logger.info('initialize network with %s' % init_type)
     net.apply(init_func)
 
 
-def init_net(net, init_type='normal', init_gain=0.02, gpu_ids=None, i_func=None):
+def init_net(net, init_type='normal', init_gain=0.02, gpu_ids=None):
     if gpu_ids is None:
         gpu_ids = [0]
     else:
@@ -55,12 +54,11 @@ def init_net(net, init_type='normal', init_gain=0.02, gpu_ids=None, i_func=None)
             net = torch.nn.DataParallel(net, gpu_ids)
         else:
             net.to(torch.device("cuda:{}".format(gpu_ids[0])))
-    init_weights(net, init_type, gain=init_gain, i_func=i_func)
+    init_weights(net, init_type, gain=init_gain)
     return net
 
 
-def get_scheduler(optimizer, lr_policy="lambda", niter=20, start_epoch=1,
-                  niter_decay=100, lr_decay_iters=50, milestones=None):
+def get_scheduler(optimizer, lr_policy="lambda", niter=20, start_epoch=1, niter_decay=100, lr_decay_iters=50):
     if lr_policy == 'lambda':
         def lambda_rule(epoch):
             lr_l = 1.0 - max(0, epoch + 1 + start_epoch - niter) / float(niter_decay + 1)
@@ -69,10 +67,6 @@ def get_scheduler(optimizer, lr_policy="lambda", niter=20, start_epoch=1,
         scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda_rule)
     elif lr_policy == 'step':
         scheduler = lr_scheduler.StepLR(optimizer, step_size=lr_decay_iters, gamma=0.1)
-    elif lr_policy == 'multi_step':
-        if milestones is None:
-            milestones = [10, 30]
-        scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=milestones, gamma=0.1)
     elif lr_policy == 'plateau':
         scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.2, threshold=0.01, patience=5)
     elif lr_policy == 'cosine':

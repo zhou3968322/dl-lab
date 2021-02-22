@@ -21,8 +21,8 @@ loss:
   gan_mode: lsgan
   lambdaL1: 20
 predictor:
-  load_epoch: 15
+  load_epoch: 2
   model_dir: "./checkpoints/pix2pix"
   long_side: 1024
   test_img_dir: "/data/zhoubingcheng/noise_testdata/imgs"
-  out_img_dir: "/data/zhoubingcheng/noise_testdata/imgs_output_pix2pix_epoch15"
+  out_img_dir: "/data/zhoubingcheng/noise_testdata/imgs_output_pix2pix"

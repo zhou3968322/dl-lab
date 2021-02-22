@@ -4,4 +4,3 @@
 
 from .medfe_predictor import MedfePredictor
 from .pix2pix_predictor import Pix2pixPredictor
-from .wdnet_predictor import WdnetPredictor

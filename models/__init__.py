@@ -8,10 +8,10 @@
 # email:bingchengzhou@foxmail.com
 # create: 2020/12/2
 
+
+from .crnn import AttentionCRNN
 from .medfe import Medfe
 from .pix2pix import Pix2pix
-from .wdnet import Wdnet
-from .srn import Srn
 
 
 

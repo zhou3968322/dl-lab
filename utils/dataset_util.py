@@ -25,6 +25,3 @@ def make_dataset(dir, max_dataset_size=float("inf")):
                 path = os.path.join(root, fname)
                 images.append(path)
     return images[:min(max_dataset_size, len(images))]
-
-
-
